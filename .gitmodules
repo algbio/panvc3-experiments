@@ -1,0 +1,3 @@
+[submodule "svcalls/lib/reference_flow"]
+	path = svcalls/lib/reference_flow
+	url = https://github.com/langmead-lab/reference_flow.git

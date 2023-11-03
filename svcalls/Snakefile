@@ -1,0 +1,307 @@
+# Copyright (c) Tuukka Norri 2023
+# Licenced under the MIT licence.
+
+# vim: syntax=snakefile
+
+
+REFERENCE_FA		= "reference/hs37d5.fa"
+REFERENCE_FAI		= "reference/hs37d5.fa.fai"
+REFERENCE_BWT		= "reference/hs37d5.fa.bwt"
+REFERENCE_GZ		= "reference/hs37d5.fa.gz"
+
+MEM_GB				= 168
+
+TRUTH				= "/home/tnorri/Downloads/HG002_SVs_Tier1_v0.6.fixed.vcf.gz" # FIXME: link or download.
+
+
+wildcard_constraints:
+	filter			= "(all)|(pass)",
+	vc_regions		= "(all)|(1)",
+	eval_regions	= "(chr1)|(chr1_selected)",
+	wg_wf			= "(giraffe)|(map)"
+
+
+rule all:
+	input:		"summary.tsv"
+
+
+rule summarise:
+	input:		expand("truvari/{wf}.{vc}.{vc_regions}.{eval_regions}.{filter}/summary.json", wf = ["vg.giraffe", "vg.giraffe", "reference-flow.default", "reference-flow.default"], vc = ["manta", "gridss"], vc_regions = ["all", "1"], eval_regions = ["chr1", "chr1_selected"], filter = ["all", "pass"])
+	output:		"summary.tsv"
+	shell:		"python3 summarise.py"
+
+
+# Our cluster does not allow outgoing connections from the nodes, so here are the rules needed to install the environments.
+rule install_bcftools:
+	conda:		"environments/bcftools.yaml"
+	shell:		"echo 'Installed dependencies in bcftools.yaml'"
+
+
+rule install_samtools:
+	conda:		"environments/samtools.yaml"
+	shell:		"echo 'Installed dependencies in samtools.yaml'"
+
+
+rule install_bwa:
+	conda:		"environments/bwa.yaml"
+	shell:		"echo 'Installed dependencies in bwa.yaml'"
+
+
+rule install_manta:
+	conda:		"environments/manta.yaml"
+	shell:		"echo 'Installed dependencies in manta.yaml'"
+
+
+rule install_gridss:
+	conda:		"environments/gridss.yaml"
+	shell:		"echo 'Installed dependencies in gridss.yaml'"
+
+
+rule install_truvari:
+	conda:		"environments/truvari.yaml"
+	shell:		"echo 'Installed dependencies in truvari.yaml'"
+
+
+rule index_fasta_fai:
+	conda:		"environments/samtools.yaml"
+	input:		"{reference}.fa"
+	output:		"{reference}.fa.fai"
+	shell:		"samtools faidx {input}"
+
+
+rule sort_bam:
+	conda:		"environments/samtools.yaml"
+	threads:	16 # workflow.cores
+	input:		"{alignments}.bam"
+	output:		"{alignments}.sorted.bam"
+	shell:		"./set-open-file-limit.sh samtools sort -@ {threads} -o {output} {input}"
+
+
+rule sort_sam:
+	conda:		"environments/samtools.yaml"
+	threads:	16 # workflow.cores
+	input:		"{alignments}.sam"
+	output:		"{alignments}.sorted.bam"
+	shell:		"./set-open-file-limit.sh samtools sort -@ {threads} -o {output} {input}"
+
+
+rule sort_sam_gz:
+	conda:		"environments/samtools.yaml"
+	threads:	16 # workflow.cores
+	input:		"{alignments}.sam.gz"
+	output:		"{alignments}.sorted.bam"
+	shell:		"./set-open-file-limit.sh samtools sort -@ {threads} -o {output} {input}"
+
+
+rule index_bam:
+	conda:		"environments/samtools.yaml"
+	threads:	16 # workflow.cores
+	input:		"{alignments}.bam"
+	output:		"{alignments}.bam.bai"
+	shell:		"samtools index -@ {threads} {input}"
+
+
+rule normalise_vcf_gz:
+	conda:		"environments/bcftools.yaml"
+	input:		"{variants}.vcf.gz"
+	output:		"{variants}.normalised.vcf.gz"
+	shell:		"bcftools norm -m - -O z -o {output} {input}"
+
+
+rule index_vcf_gz_csi:
+	conda:		"environments/bcftools.yaml"
+	input:		"{variants}.vcf.gz"
+	output:		"{variants}.vcf.gz.csi"
+	shell:		"bcftools index {input}"
+
+
+rule index_vcf_gz_tbi:
+	conda:		"environments/bcftools.yaml"
+	input:		"{variants}.vcf.gz"
+	output:		"{variants}.vcf.gz.tbi"
+	shell:		"bcftools index -t {input}"
+
+
+rule bwa_index:	# Needed by gridss
+	conda:		"environments/bwa.yaml"
+	input:		"{reference}.fa"
+	output:		multiext("{reference}.fa", ".amb", ".ann", ".bwt", ".pac", ".sa")
+	shell:		"bwa index {input}"
+
+
+rule vg_index:
+	conda:				"environments/vg.yaml"
+	threads:			workflow.cores
+	input:
+		reference		= "{REFERENCE_FA}",
+		known_variants	= "known-variants/chr1-no-na12878.vcf.gz"
+	output:				"vg/map/index.map.vg"
+	benchmark:			 "benchmark/vg_index"
+	shell:
+		"vg autoindex --threads {threads} --workflow map --tmp-dir temp --target-mem {MEM_GB}G -r {input.reference} -v {input.known_variants} -p vg/map/index"
+		
+
+rule vg_index_giraffe:
+	conda:				"environments/vg.yaml"
+	threads:			workflow.cores
+	input:
+		reference		= "{REFERENCE_FA}",
+		known_variants	= "known-variants/chr1-no-na12878.vcf.gz"
+	output:				"vg/giraffe/index.giraffe.gbz"
+	benchmark:	 		"benchmark/vg_index_giraffe"
+	shell:
+		"vg autoindex --threads {threads} --workflow giraffe --tmp-dir temp --target-mem {MEM_GB}G -r {input.reference} -v {input.known_variants} -p vg/giraffe/index"
+
+
+rule vg_map:
+	conda:			"environments/vg.yaml"
+	threads:		workflow.cores
+	input:
+		index		= "vg/map/index.map.vg",
+		reads_1		= "reads/HG002_HiSeq30x_subsampled_R1.fastq.gz",
+		reads_2		= "reads/HG002_HiSeq30x_subsampled_R2.fastq.gz"
+	output:			"vg/mapped-reads.map.all.bam"
+	benchmark:		"benchmark/vg_map_map"
+	shell:
+		"vg map --threads {threads} --fastq {input.reads_1} --fastq {input.reads_2} --base-name vg/map/index --surject-to bam > {output}"
+	
+
+rule vg_map_giraffe:
+	conda:			"environments/vg.yaml"
+	threads:		workflow.cores
+	input:
+		index		= "vg/giraffe/index.giraffe.gbz",
+		reads_1		= "reads/HG002_HiSeq30x_subsampled_R1.fastq.gz",
+		reads_2		= "reads/HG002_HiSeq30x_subsampled_R2.fastq.gz"
+	output:			"vg/mapped-reads.giraffe.all.bam"
+	benchmark:		"benchmark/vg_map_giraffe"
+	shell:
+		"vg giraffe --threads {threads} --gbz-name vg/giraffe/index.giraffe.gbz --minimizer-name vg/giraffe/index.min --dist-name vg/giraffe/index.dist --fastq-in {input.reads_1} --fastq-in {input.reads_2} -o BAM > {output}"
+
+
+# Enable when this is resolved: https://github.com/snakemake/snakemake/issues/2499
+#configfile: "config/reference-flow.yaml"
+#
+#module reference_flow_workflow:
+#	snakefile:	"/home/tnorri/Checkout/reference_flow/snakemake/Snakefile"
+#	config: config["reference_flow"]
+#
+#use rule * from reference_flow_workflow as reference_flow_*
+#
+#use rule all from reference_flow_workflow as reference_flow_all with:
+#	benchmark:	"benchmark/reference_flow"
+
+rule reference_flow_run:
+	threads:		workflow.cores
+	benchmark:		"benchmark/run_reference_flow_sp"
+	input:
+		reads_1		= "reads/HG002_HiSeq30x_subsampled_R1.fastq.gz",
+		reads_2		= "reads/HG002_HiSeq30x_subsampled_R2.fastq.gz"
+	output:			"reference-flow/run/experiments/NA24385/thrds0_S1_b1000_ld1/chr1-refflow-10-thrds0_S1_b1000_ld1-liftover.sam"
+	shell:			"snakemake --printshellcmds --cores {threads} --snakefile lib/reference_flow/snakemake/Snakefile --use-conda --configfile config/reference-flow-sp.yaml --"
+
+
+# “.all.” needed for subsetting alignments for gridss.
+rule reference_flow_link_result:
+	input:			"reference-flow/run/experiments/NA24385/thrds0_S1_b1000_ld1/chr1-refflow-10-thrds0_S1_b1000_ld1-liftover.sam"
+	output:			"reference-flow/run/experiments/NA24385/thrds0_S1_b1000_ld1/chr1-refflow-10-thrds0_S1_b1000_ld1-liftover.all.sam"
+	shell:			"pushd reference-flow/run/experiments/NA24385/thrds0_S1_b1000_ld1 && ln -s chr1-refflow-10-thrds0_S1_b1000_ld1-liftover.sam chr1-refflow-10-thrds0_S1_b1000_ld1-liftover.all.sam"
+
+
+def manta_region_arg(wildcards):
+	if 'all' == wildcards.vc_regions:
+		return ""
+	return f"--region={wildcards.vc_regions}"
+
+rule manta_config_vg:
+	conda:			"environments/manta.yaml"
+	input:
+		reference	= REFERENCE_FA,
+		alignments	= "vg/mapped-reads.{vg_wf}.all.sorted.bam",
+		index		= "vg/mapped-reads.{vg_wf}.all.sorted.bam.bai"
+	params:
+		region_arg	= manta_region_arg
+	output:			"manta/vg.{vg_wf}.{vc_regions}/runWorkflow.py"
+	shell:			"configManta.py --runDir='manta/vg.{wildcards.vg_wf}.{wildcards.vc_regions}' --referenceFasta='{input.reference}' --bam={input.alignments} {params.region_arg}"
+
+
+rule manta_config_reference_flow:
+	conda:			"environments/manta.yaml"
+	input:
+		reference	= REFERENCE_FA,
+		alignments	= "reference-flow/run/experiments/NA24385/thrds0_S1_b1000_ld1/chr1-refflow-10-thrds0_S1_b1000_ld1-liftover.sorted.bam",
+		index		= "reference-flow/run/experiments/NA24385/thrds0_S1_b1000_ld1/chr1-refflow-10-thrds0_S1_b1000_ld1-liftover.sorted.bam.bai"
+	params:
+		region_arg	= manta_region_arg
+	output:			"manta/reference-flow.default.{vc_regions}/runWorkflow.py"
+	shell:			"configManta.py --runDir='manta/reference-flow.default.{wildcards.vc_regions}' --referenceFasta='{input.reference}' --bam={input.alignments} {params.region_arg}"
+
+
+rule manta_run:
+	conda:			"environments/manta.yaml"
+	threads:		workflow.cores
+	input:			"manta/{wf}/runWorkflow.py"
+	output:			"manta/{wf}/results/variants/diploidSV.vcf.gz"
+	shell:			"{input} -j {threads} -g {MEM_GB}"
+
+
+rule gridss_subset_alignments:
+	conda:			"environments/gridss.yaml"
+	threads:		workflow.cores
+	input:
+		alignments	= "{alignments}.all.sorted.bam",
+		chrom		= "regions/chr{vc_regions}.bed"
+	output:			"{alignments}.{vc_regions}.bam"
+	shell:			"gridss_extract_overlapping_fragments --threads {threads} --targetbed {input.chrom} --output {output} {input.alignments}"
+
+
+rule gridss_run_vg:
+	conda:			"environments/gridss.yaml"
+	threads:		workflow.cores
+	input:
+		reference	= REFERENCE_FA,
+		ref_fai		= REFERENCE_FAI,
+		ref_bwt		= REFERENCE_BWT,
+		alignments	= "vg/mapped-reads.{vg_wf}.{vc_regions}.sorted.bam"
+	output:			"gridss/vg.{vg_wf}.{vc_regions}.vcf.gz"
+	shell:			"gridss --threads {threads} --reference {input.reference} --output {output} {input.alignments}"
+
+
+rule gridss_run_reference_flow:
+	conda:			"environments/gridss.yaml"
+	threads:		workflow.cores
+	input:
+		reference	= REFERENCE_FA,
+		ref_fai		= REFERENCE_FAI,
+		ref_bwt		= REFERENCE_BWT,
+		alignments	= "reference-flow/run/experiments/NA24385/thrds0_S1_b1000_ld1/chr1-refflow-10-thrds0_S1_b1000_ld1-liftover.{vc_regions}.sorted.bam"
+	output:			"gridss/reference-flow.default.{vc_regions}.vcf.gz"
+	shell:			"gridss --threads {threads} --reference {input.reference} --output {output} {input.alignments}"
+
+
+def truvari_dir_name(variant_caller):
+	return lambda wildcards: f"truvari/{wildcards.wf}.{variant_caller}.{wildcards.vc_regions}.{wildcards.eval_regions}.{wildcards.filter}"
+
+
+rule truvari_run_manta:
+	conda:			"environments/truvari.yaml"
+	input:
+		variants	= "manta/{wf}.{vc_regions}/results/variants/diploidSV.normalised.vcf.gz",
+		index		= "manta/{wf}.{vc_regions}/results/variants/diploidSV.normalised.vcf.gz.tbi"
+	output:			"truvari/{wf}.manta.{vc_regions}.{eval_regions}.{filter}/summary.json"
+	params:
+		truvari_dir	= truvari_dir_name("manta"),
+		filter_arg	= lambda wildcards: "--passonly" if "pass" == wildcards.filter else ""
+	shell:			"rmdir {params.truvari_dir} && truvari bench -b {TRUTH} -c {input.variants} -o {params.truvari_dir} --reference {REFERENCE_GZ} --includebed regions/{wildcards.eval_regions}.bed --sizemin 0 --sizefilt 0 {params.filter_arg}"
+
+
+rule truvari_run_gridss:
+	conda:			"environments/truvari.yaml"
+	input:
+		variants	= "gridss/{wf}.{vc_regions}.normalised.vcf.gz",
+		index		= "gridss/{wf}.{vc_regions}.normalised.vcf.gz.tbi"
+	output:			"truvari/{wf}.gridss.{vc_regions}.{eval_regions}.{filter}/summary.json"
+	params:
+		truvari_dir	= truvari_dir_name("gridss"),
+		filter_arg	= lambda wildcards: "--passonly" if "pass" == wildcards.filter else ""
+	shell:			"rmdir {params.truvari_dir} && truvari bench -b {TRUTH} -c {input.variants} -o {params.truvari_dir} --reference {REFERENCE_GZ} --includebed regions/{wildcards.eval_regions}.bed --sizemin 0 --sizefilt 0 {params.filter_arg}"

@@ -1,0 +1,43 @@
+ALN_MODE: 'paired-end'
+READS1: 'reads/HG002_HiSeq30x_subsampled_R1.fastq.gz'
+READS2: 'reads/HG002_HiSeq30x_subsampled_R2.fastq.gz'
+INDIV: 'NA24385'
+EXP_LABEL: 'chr1'
+DIR: 'reference-flow/run'
+THREADS: 64
+USE_PREBUILT: False
+SORT_SAM: False
+GENOME: 'reference/hs37d5.fa'
+#CHROM: ['1', '2', '3', '4', '5', '6', '7', '8', '9', '10', '11', '12', '13', '14', '15', '16', '17', '18', '19', '20', '21', '22', 'X', 'Y']
+CHROM: ['1']
+CHR_PREFIX: ''
+DIR_VCF: 'known-variants'
+VCF_PREFIX: 'no-na12878.'
+VCF_SUFFIX: '.vcf.gz'
+GROUP : ['EUR', 'AMR', 'EAS', 'SAS', 'AFR']
+POP_LEVEL : 'superpop'
+ALN_MAPQ_THRSD : '10'
+
+# Phase-preserving stochastic update (1kbp-blocks)
+POP_THRSD : 0
+POP_STOCHASTIC : 1
+POP_BLOCK_SIZE : 1000
+POP_USE_LD : 1
+
+# Files specifying 1KG individual-population and population-superpopulation mappings
+FAMILY : 'lib/reference_flow/resources/20130606_g1k.ped'
+SPOP : 'lib/reference_flow/resources/1kg.superpopulation'
+
+# Chromosome for GRCh37
+LENGTH_MAP : 'resources/hs37d5.length_map'
+CHROM_MAP : 'resources/hs37d5.chrom_map'
+
+# Paths of software
+BCFTOOLS : 'bcftools'
+SAMTOOLS : 'samtools'
+LEVIOSAM : 'leviosam'
+PYTHON : 'python'
+DIR_SCRIPTS : 'lib/reference_flow/src'
+
+# Random seed used in the reference flow stochastic reference genome update process and for aligner
+RAND_SEED : 0

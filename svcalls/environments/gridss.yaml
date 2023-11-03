@@ -1,0 +1,6 @@
+channels:
+- conda-forge
+- bioconda
+dependencies:
+- gridss 
+- samtools=1.10 # gridss_extract_overlapping_fragments has problems parsing at least Samtools 1.18’s output.
