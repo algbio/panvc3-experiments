@@ -26,8 +26,8 @@ reference_flow:
   POP_USE_LD : 1
   
   # Files specifying 1KG individual-population and population-superpopulation mappings
-  FAMILY : '/home/tnorri/Checkout/reference_flow/resources/20130606_g1k.ped'
-  SPOP : '/home/tnorri/Checkout/reference_flow/resources/1kg.superpopulation'
+  FAMILY : 'lib/reference_flow/resources/20130606_g1k.ped'
+  SPOP : 'lib/reference_flow/resources/1kg.superpopulation'
   
   # Chromosome for GRCh37
   LENGTH_MAP : 'resources/hs37d5.length_map'
