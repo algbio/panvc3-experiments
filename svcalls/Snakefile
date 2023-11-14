@@ -193,21 +193,15 @@ rule vg_map_giraffe:
 #use rule all from reference_flow_workflow as reference_flow_all with:
 #	benchmark:	"benchmark/reference_flow"
 
+## “.all.” needed for subsetting alignments for gridss.
 rule reference_flow_run:
 	threads:		workflow.cores
 	benchmark:		"benchmark/run_reference_flow_sp"
 	input:
 		reads_1		= "reads/HG002_HiSeq30x_subsampled_R1.fastq.gz",
 		reads_2		= "reads/HG002_HiSeq30x_subsampled_R2.fastq.gz"
-	output:			"reference-flow/run/experiments/NA24385/thrds0_S1_b1000_ld1/chr1-refflow-10-thrds0_S1_b1000_ld1-liftover.sam"
-	shell:			"snakemake --printshellcmds --cores {threads} --snakefile lib/reference_flow/snakemake/Snakefile --use-conda --configfile config/reference-flow-sp.yaml --"
-
-
-# “.all.” needed for subsetting alignments for gridss.
-rule reference_flow_link_result:
-	input:			"reference-flow/run/experiments/NA24385/thrds0_S1_b1000_ld1/chr1-refflow-10-thrds0_S1_b1000_ld1-liftover.sam"
 	output:			"reference-flow/run/experiments/NA24385/thrds0_S1_b1000_ld1/chr1-refflow-10-thrds0_S1_b1000_ld1-liftover.all.sam"
-	shell:			"pushd reference-flow/run/experiments/NA24385/thrds0_S1_b1000_ld1 && ln -s chr1-refflow-10-thrds0_S1_b1000_ld1-liftover.sam chr1-refflow-10-thrds0_S1_b1000_ld1-liftover.all.sam"
+	shell:			"snakemake --printshellcmds --cores {threads} --snakefile lib/reference_flow/snakemake/Snakefile --use-conda --conda-prefix ../conda-env --configfile config/reference-flow-sp.yaml -- && pushd reference-flow/run/experiments/NA24385/thrds0_S1_b1000_ld1 && ln -s chr1-refflow-10-thrds0_S1_b1000_ld1-liftover.sam chr1-refflow-10-thrds0_S1_b1000_ld1-liftover.all.sam"
 
 
 def manta_region_arg(wildcards):
