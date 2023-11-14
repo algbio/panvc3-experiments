@@ -33,44 +33,44 @@ rule summarise:
 
 # Our cluster does not allow outgoing connections from the nodes, so here are the rules needed to install the environments.
 rule install_bcftools:
-	conda:		"environments/bcftools.yaml"
+	conda:		"../environments/bcftools.yaml"
 	shell:		"echo 'Installed dependencies in bcftools.yaml'"
 
 
 rule install_samtools:
-	conda:		"environments/samtools.yaml"
+	conda:		"../environments/samtools.yaml"
 	shell:		"echo 'Installed dependencies in samtools.yaml'"
 
 
 rule install_bwa:
-	conda:		"environments/bwa.yaml"
+	conda:		"../environments/bwa.yaml"
 	shell:		"echo 'Installed dependencies in bwa.yaml'"
 
 
 rule install_manta:
-	conda:		"environments/manta.yaml"
+	conda:		"../environments/manta.yaml"
 	shell:		"echo 'Installed dependencies in manta.yaml'"
 
 
 rule install_gridss:
-	conda:		"environments/gridss.yaml"
+	conda:		"../environments/gridss.yaml"
 	shell:		"echo 'Installed dependencies in gridss.yaml'"
 
 
 rule install_truvari:
-	conda:		"environments/truvari.yaml"
+	conda:		"../environments/truvari.yaml"
 	shell:		"echo 'Installed dependencies in truvari.yaml'"
 
 
 rule index_fasta_fai:
-	conda:		"environments/samtools.yaml"
+	conda:		"../environments/samtools.yaml"
 	input:		"{reference}.fa"
 	output:		"{reference}.fa.fai"
 	shell:		"samtools faidx {input}"
 
 
 rule sort_bam:
-	conda:		"environments/samtools.yaml"
+	conda:		"../environments/samtools.yaml"
 	threads:	16 # workflow.cores
 	input:		"{alignments}.bam"
 	output:		"{alignments}.sorted.bam"
@@ -78,7 +78,7 @@ rule sort_bam:
 
 
 rule sort_sam:
-	conda:		"environments/samtools.yaml"
+	conda:		"../environments/samtools.yaml"
 	threads:	16 # workflow.cores
 	input:		"{alignments}.sam"
 	output:		"{alignments}.sorted.bam"
@@ -86,7 +86,7 @@ rule sort_sam:
 
 
 rule sort_sam_gz:
-	conda:		"environments/samtools.yaml"
+	conda:		"../environments/samtools.yaml"
 	threads:	16 # workflow.cores
 	input:		"{alignments}.sam.gz"
 	output:		"{alignments}.sorted.bam"
@@ -94,7 +94,7 @@ rule sort_sam_gz:
 
 
 rule index_bam:
-	conda:		"environments/samtools.yaml"
+	conda:		"../environments/samtools.yaml"
 	threads:	16 # workflow.cores
 	input:		"{alignments}.bam"
 	output:		"{alignments}.bam.bai"
@@ -102,35 +102,35 @@ rule index_bam:
 
 
 rule normalise_vcf_gz:
-	conda:		"environments/bcftools.yaml"
+	conda:		"../environments/bcftools.yaml"
 	input:		"{variants}.vcf.gz"
 	output:		"{variants}.normalised.vcf.gz"
 	shell:		"bcftools norm -m - -O z -o {output} {input}"
 
 
 rule index_vcf_gz_csi:
-	conda:		"environments/bcftools.yaml"
+	conda:		"../environments/bcftools.yaml"
 	input:		"{variants}.vcf.gz"
 	output:		"{variants}.vcf.gz.csi"
 	shell:		"bcftools index {input}"
 
 
 rule index_vcf_gz_tbi:
-	conda:		"environments/bcftools.yaml"
+	conda:		"../environments/bcftools.yaml"
 	input:		"{variants}.vcf.gz"
 	output:		"{variants}.vcf.gz.tbi"
 	shell:		"bcftools index -t {input}"
 
 
 rule bwa_index:	# Needed by gridss
-	conda:		"environments/bwa.yaml"
+	conda:		"../environments/bwa.yaml"
 	input:		"{reference}.fa"
 	output:		multiext("{reference}.fa", ".amb", ".ann", ".bwt", ".pac", ".sa")
 	shell:		"bwa index {input}"
 
 
 rule vg_index:
-	conda:				"environments/vg.yaml"
+	conda:				"../environments/vg.yaml"
 	threads:			workflow.cores
 	input:
 		reference		= REFERENCE_FA,
@@ -142,7 +142,7 @@ rule vg_index:
 		
 
 rule vg_index_giraffe:
-	conda:				"environments/vg.yaml"
+	conda:				"../environments/vg.yaml"
 	threads:			workflow.cores
 	input:
 		reference		= REFERENCE_FA,
@@ -154,7 +154,7 @@ rule vg_index_giraffe:
 
 
 rule vg_map:
-	conda:				"environments/vg.yaml"
+	conda:				"../environments/vg.yaml"
 	threads:			workflow.cores
 	input:
 		index_gcsa		= "vg/map/index.gcsa",
@@ -169,7 +169,7 @@ rule vg_map:
 	
 
 rule vg_map_giraffe:
-	conda:			"environments/vg.yaml"
+	conda:			"../environments/vg.yaml"
 	threads:		workflow.cores
 	input:
 		index		= "vg/giraffe/index.giraffe.gbz",
@@ -216,7 +216,7 @@ def manta_region_arg(wildcards):
 	return f"--region={wildcards.vc_regions}"
 
 rule manta_config_vg:
-	conda:			"environments/manta.yaml"
+	conda:			"../environments/manta.yaml"
 	input:
 		reference	= REFERENCE_FA,
 		alignments	= "vg/mapped-reads.{vg_wf}.all.sorted.bam",
@@ -228,7 +228,7 @@ rule manta_config_vg:
 
 
 rule manta_config_reference_flow:
-	conda:			"environments/manta.yaml"
+	conda:			"../environments/manta.yaml"
 	input:
 		reference	= REFERENCE_FA,
 		alignments	= "reference-flow/run/experiments/NA24385/thrds0_S1_b1000_ld1/chr1-refflow-10-thrds0_S1_b1000_ld1-liftover.sorted.bam",
@@ -240,7 +240,7 @@ rule manta_config_reference_flow:
 
 
 rule manta_run:
-	conda:			"environments/manta.yaml"
+	conda:			"../environments/manta.yaml"
 	threads:		workflow.cores
 	input:			"manta/{wf}/runWorkflow.py"
 	output:			"manta/{wf}/results/variants/diploidSV.vcf.gz"
@@ -248,7 +248,7 @@ rule manta_run:
 
 
 rule gridss_subset_alignments:
-	conda:			"environments/gridss.yaml"
+	conda:			"../environments/gridss.yaml"
 	threads:		workflow.cores
 	input:
 		alignments	= "{alignments}.all.sorted.bam",
@@ -258,7 +258,7 @@ rule gridss_subset_alignments:
 
 
 rule gridss_run_vg:
-	conda:			"environments/gridss.yaml"
+	conda:			"../environments/gridss.yaml"
 	threads:		workflow.cores
 	input:
 		reference	= REFERENCE_FA,
@@ -270,7 +270,7 @@ rule gridss_run_vg:
 
 
 rule gridss_run_reference_flow:
-	conda:			"environments/gridss.yaml"
+	conda:			"../environments/gridss.yaml"
 	threads:		workflow.cores
 	input:
 		reference	= REFERENCE_FA,
@@ -286,7 +286,7 @@ def truvari_dir_name(variant_caller):
 
 
 rule truvari_run_manta:
-	conda:			"environments/truvari.yaml"
+	conda:			"../environments/truvari.yaml"
 	input:
 		variants	= "manta/{wf}.{vc_regions}/results/variants/diploidSV.normalised.vcf.gz",
 		index		= "manta/{wf}.{vc_regions}/results/variants/diploidSV.normalised.vcf.gz.tbi"
@@ -298,7 +298,7 @@ rule truvari_run_manta:
 
 
 rule truvari_run_gridss:
-	conda:			"environments/truvari.yaml"
+	conda:			"../environments/truvari.yaml"
 	input:
 		variants	= "gridss/{wf}.{vc_regions}.normalised.vcf.gz",
 		index		= "gridss/{wf}.{vc_regions}.normalised.vcf.gz.tbi"
