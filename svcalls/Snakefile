@@ -4,14 +4,24 @@
 # vim: syntax=snakefile
 
 
-REFERENCE_FA		= "reference/hs37d5.fa"
-REFERENCE_FAI		= "reference/hs37d5.fa.fai"
-REFERENCE_BWT		= "reference/hs37d5.fa.bwt"
-REFERENCE_GZ		= "reference/hs37d5.fa.gz"
+REFERENCE_FA		= "../reference/hs37d5.fa"
+REFERENCE_FAI		= "../reference/hs37d5.fa.fai"
+REFERENCE_BWT		= "../reference/hs37d5.fa.bwt"
+REFERENCE_GZ		= "../reference/hs37d5.fa.gz"
 
 MEM_GB				= 168
 
-TRUTH				= "/home/tnorri/Downloads/HG002_SVs_Tier1_v0.6.fixed.vcf.gz" # FIXME: link or download.
+TRUTH				= "../truth/HG002_SVs_Tier1_v0.6.normalised.vcf.gz"
+KNOWN_VARIANTS		= "../known-variants/ALL.chr1.phase3_shapeit2_mvncall_integrated_v5b.20130502.genotypes.vcf.gz"
+
+WORKFLOWS = [
+	("vg.giraffe",				"manta"),
+	#("vg.giraffe",				"gridss"),
+	("vg.map",					"manta"),
+	#("vg.map",					"gridss"),
+	("reference-flow.default",	"manta"),
+	("reference-flow.default",	"gridss")
+]
 
 
 wildcard_constraints:
@@ -26,9 +36,9 @@ rule all:
 
 
 rule summarise:
-	input:		expand("truvari/{wf}.{vc}.{vc_regions}.{eval_regions}.{filter}/summary.json", wf = ["vg.giraffe", "vg.map", "reference-flow.default"], vc = ["manta", "gridss"], vc_regions = ["all", "1"], eval_regions = ["chr1", "chr1_selected"], filter = ["all", "pass"])
+	input:		expand("truvari/{wf[0]}.{wf[1]}.{vc_regions}.{eval_regions}.{filter}/summary.json", wf = WORKFLOWS, vc_regions = ["all", "1"], eval_regions = ["chr1", "chr1_selected"], filter = ["all", "pass"])
 	output:		"summary.tsv"
-	shell:		"python3 summarise.py"
+	shell:		"python3 summarise.py > {output}"
 
 
 # Our cluster does not allow outgoing connections from the nodes, so here are the rules needed to install the environments.
@@ -134,7 +144,7 @@ rule vg_index:
 	threads:			workflow.cores
 	input:
 		reference		= REFERENCE_FA,
-		known_variants	= "known-variants/chr1-no-na12878.vcf.gz"
+		known_variants	= KNOWN_VARIANTS
 	output:				multiext("vg/map/index", ".gcsa", ".gcsa.lcp", ".xg")
 	benchmark:			"benchmark/vg_index"
 	shell:
@@ -146,7 +156,7 @@ rule vg_index_giraffe:
 	threads:			workflow.cores
 	input:
 		reference		= REFERENCE_FA,
-		known_variants	= "known-variants/chr1-no-na12878.vcf.gz"
+		known_variants	= KNOWN_VARIANTS
 	output:				"vg/giraffe/index.giraffe.gbz"
 	benchmark:	 		"benchmark/vg_index_giraffe"
 	shell:
