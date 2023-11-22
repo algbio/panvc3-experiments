@@ -4,15 +4,17 @@
 # vim: syntax=snakefile
 
 
+TRUTH				= "../truth/HG002_SVs_Tier1_v0.6.normalised.vcf.gz"
+KNOWN_VARIANTS		= "../known-variants/ALL.chr1.phase3_shapeit2_mvncall_integrated_v5b.20130502.genotypes.vcf.gz"
+READS_1				= "../reads/HG002_HiSeq30x_subsampled_R1.fastq.gz",
+READS_2				= "../reads/HG002_HiSeq30x_subsampled_R2.fastq.gz"
+
 REFERENCE_FA		= "../reference/hs37d5.fa"
 REFERENCE_FAI		= "../reference/hs37d5.fa.fai"
 REFERENCE_BWT		= "../reference/hs37d5.fa.bwt"
 REFERENCE_GZ		= "../reference/hs37d5.fa.gz"
 
 MEM_GB				= 168
-
-TRUTH				= "../truth/HG002_SVs_Tier1_v0.6.normalised.vcf.gz"
-KNOWN_VARIANTS		= "../known-variants/ALL.chr1.phase3_shapeit2_mvncall_integrated_v5b.20130502.genotypes.vcf.gz"
 
 WORKFLOWS = [
 	("vg.giraffe",				"manta"),
@@ -170,8 +172,8 @@ rule vg_map:
 		index_gcsa		= "vg/map/index.gcsa",
 		index_gcsa_lcp	= "vg/map/index.gcsa.lcp",
 		index_xg		= "vg/map/index.xg",
-		reads_1			= "reads/HG002_HiSeq30x_subsampled_R1.fastq.gz",
-		reads_2			= "reads/HG002_HiSeq30x_subsampled_R2.fastq.gz"
+		reads_1			= READS_1,
+		reads_2			= READS_2
 	output:				"vg/mapped-reads.map.all.bam"
 	benchmark:			"benchmark/vg_map"
 	shell:
@@ -183,8 +185,8 @@ rule vg_map_giraffe:
 	threads:		workflow.cores
 	input:
 		index		= "vg/giraffe/index.giraffe.gbz",
-		reads_1		= "reads/HG002_HiSeq30x_subsampled_R1.fastq.gz",
-		reads_2		= "reads/HG002_HiSeq30x_subsampled_R2.fastq.gz"
+		reads_1		= READS_1,
+		reads_2		= READS_2
 	output:			"vg/mapped-reads.giraffe.all.bam"
 	benchmark:		"benchmark/vg_map_giraffe"
 	shell:
@@ -208,8 +210,8 @@ rule reference_flow_run:
 	threads:		workflow.cores
 	benchmark:		"benchmark/run_reference_flow_sp"
 	input:
-		reads_1		= "reads/HG002_HiSeq30x_subsampled_R1.fastq.gz",
-		reads_2		= "reads/HG002_HiSeq30x_subsampled_R2.fastq.gz"
+		reads_1		= READS_1,
+		reads_2		= READS_2
 	output:			"reference-flow/run/experiments/NA24385/thrds0_S1_b1000_ld1/chr1-refflow-10-thrds0_S1_b1000_ld1-liftover.all.sam"
 	shell:			"snakemake --printshellcmds --cores {threads} --snakefile lib/reference_flow/snakemake/Snakefile --use-conda --conda-prefix ../conda-env --configfile config/reference-flow-sp.yaml -- && pushd reference-flow/run/experiments/NA24385/thrds0_S1_b1000_ld1 && ln -s chr1-refflow-10-thrds0_S1_b1000_ld1-liftover.sam chr1-refflow-10-thrds0_S1_b1000_ld1-liftover.all.sam"
 
