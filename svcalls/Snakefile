@@ -86,7 +86,7 @@ rule sort_bam:
 	threads:	16 # workflow.cores
 	input:		"{alignments}.bam"
 	output:		"{alignments}.sorted.bam"
-	shell:		"./set-open-file-limit.sh samtools sort -@ {threads} -o {output} {input}"
+	shell:		"../set-open-file-limit.sh samtools sort -@ {threads} -o {output} {input}"
 
 
 rule sort_sam:
@@ -94,7 +94,7 @@ rule sort_sam:
 	threads:	16 # workflow.cores
 	input:		"{alignments}.sam"
 	output:		"{alignments}.sorted.bam"
-	shell:		"./set-open-file-limit.sh samtools sort -@ {threads} -o {output} {input}"
+	shell:		"../set-open-file-limit.sh samtools sort -@ {threads} -o {output} {input}"
 
 
 rule sort_sam_gz:
@@ -102,7 +102,7 @@ rule sort_sam_gz:
 	threads:	16 # workflow.cores
 	input:		"{alignments}.sam.gz"
 	output:		"{alignments}.sorted.bam"
-	shell:		"./set-open-file-limit.sh samtools sort -@ {threads} -o {output} {input}"
+	shell:		"../set-open-file-limit.sh samtools sort -@ {threads} -o {output} {input}"
 
 
 rule index_bam:
