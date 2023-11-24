@@ -1,14 +1,14 @@
 reference_flow:
   ALN_MODE: 'paired-end'
-  READS1: 'reads/HG002_HiSeq30x_subsampled_R1.fastq.gz'
-  READS2: 'reads/HG002_HiSeq30x_subsampled_R2.fastq.gz'
+  READS1: '../reads/HG002_HiSeq30x_subsampled_R1.fastq.gz'
+  READS2: '../reads/HG002_HiSeq30x_subsampled_R2.fastq.gz'
   INDIV: 'NA24385'
   EXP_LABEL: 'chr1'
   DIR: 'reference-flow/run'
   THREADS: 64
   USE_PREBUILT: False
   SORT_SAM: False
-  GENOME: 'reference/hs37d5.fa'
+  GENOME: '../reference/hs37d5.fa'
   #CHROM: ['1', '2', '3', '4', '5', '6', '7', '8', '9', '10', '11', '12', '13', '14', '15', '16', '17', '18', '19', '20', '21', '22', 'X', 'Y']
   CHROM: ['1']
   CHR_PREFIX: ''
