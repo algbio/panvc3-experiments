@@ -141,11 +141,20 @@ rule bwa_index:	# Needed by gridss
 	shell:		"bwa index {input}"
 
 
+configfile: "config/panvc3.yaml"
+
+module panvc3_workflow:
+	snakefile:	"../workflow/rules/panvc3.smk"
+	config:		config["panvc3"]
+
+use rule * from panvc3_workflow as panvc3_*
+
+
 # Enable when this is resolved: https://github.com/snakemake/snakemake/issues/2499
 #configfile: "config/reference-flow.yaml"
 #
 #module reference_flow_workflow:
-#	snakefile:	"/home/tnorri/Checkout/reference_flow/snakemake/Snakefile"
+#	snakefile:	"lib/reference_flow/snakemake/Snakefile"
 #	config: config["reference_flow"]
 #
 #use rule * from reference_flow_workflow as reference_flow_*
