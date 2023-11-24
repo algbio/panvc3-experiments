@@ -18,6 +18,34 @@ from snakemake.utils import min_version
 min_version("7.32.4")
 
 
+def identifier_from_path(wildcards):
+	return wildcards.alignments.replace("/", "_")
+
+
+rule sort_sam_gz:
+	message:		"Sorting the alignments"
+	conda:			"../environments/samtools.yaml"
+	threads:		16
+	params:
+		identifier	= identifier_from_path
+	benchmark:		"{config['output_prefix']}/benchmark/panvc3_sort_sam_gz.{params.identifier}"
+	input:			"{alignments}.sam.gz"
+	output:			"{alignments}.sorted.bam"
+	shell:			"../scripts/set-open-file-limit.sh samtools sort -@ {threads} -o {output} {input}"
+
+
+rule sort_by_qname_sam_gz:
+	message:		"Sorting the alignments by QNAME"
+	conda:			"../environments/samtools.yaml"
+	threads:		16
+	params:
+		identifier	= identifier_from_path
+	benchmark:		"{config['output_prefix']}/benchmark/panvc3_sort_by_qname_sam_gz.{params.identifier}"
+	input:			"{alignments}.sam.gz"
+	output:			"{alignments}.qname-sorted.bam"
+	shell:			"../scripts/set-open-file-limit.sh samtools sort -n -@ {threads} -o {output} {input}"
+
+
 rule generate_founder_sequences:
 	message:				"Generating founder sequences"
 	# FIXME: add Conda
