@@ -70,7 +70,7 @@ rule generate_founder_sequences:
 
 rule filter_reference:
 	message:				"Extracting remaining contigs from the reference"
-	# FIXME: add Conda (bgzip i.e. htslib?, biopython)
+	conda:					"../environments/biopython.yaml"
 	benchmark:				"{config['output_prefix']}/benchmark/panvc3_filter_reference"
 	threads:				8
 	input:
