@@ -1,0 +1,5 @@
+channels:
+- conda-forge
+- bioconda
+dependencies:
+- panvc3=v1.0
