@@ -23,6 +23,11 @@ popd
 mkdir -p known-variants
 pushd known-variants
 wget -c https://ftp.1000genomes.ebi.ac.uk/vol1/ftp/release/20130502/ALL.chr1.phase3_shapeit2_mvncall_integrated_v5b.20130502.genotypes.vcf.gz
+# Unfortunately we currently need the uncompressed variants.
+if [ ! -e ALL.chr1.phase3_shapeit2_mvncall_integrated_v5b.20130502.genotypes.vcf ]
+then
+	gunzip -k ALL.chr1.phase3_shapeit2_mvncall_integrated_v5b.20130502.genotypes.vcf.gz
+fi
 popd
 
 # Reads
