@@ -16,6 +16,7 @@ REFERENCE_GZ		= "../reference/hs37d5.fa.gz"
 
 MEM_GB				= 168
 
+# Remember to check the founder counts from vcf2multialign's output with each given distance.
 WORKFLOWS = [
 	("panvc3.bowtie2.f14.d25.mapq-recalculated",	"manta"),
 	("panvc3.bowtie2.f14.d25.mapq-recalculated",	"gridss"),
