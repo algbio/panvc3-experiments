@@ -17,12 +17,20 @@ REFERENCE_GZ		= "../reference/hs37d5.fa.gz"
 MEM_GB				= 168
 
 WORKFLOWS = [
-	("vg.giraffe",				"manta"),
-	#("vg.giraffe",				"gridss"),
-	("vg.map",					"manta"),
-	#("vg.map",					"gridss"),
-	("reference-flow.default",	"manta"),
-	("reference-flow.default",	"gridss")
+	("panvc3.bowtie2.f14.d25.mapq-recalculated",	"manta"),
+	("panvc3.bowtie2.f14.d25.mapq-recalculated",	"gridss"),
+	("panvc3.bowtie2.f14.d25.max-mapq",				"manta"),
+	("panvc3.bowtie2.f14.d25.max-mapq",				"gridss"),
+	("panvc3.bowtie2.f25.d50.mapq-recalculated",	"manta"),
+	("panvc3.bowtie2.f25.d50.mapq-recalculated",	"gridss"),
+	("panvc3.bowtie2.f25.d50.max-mapq",				"manta"),
+	("panvc3.bowtie2.f25.d50.max-mapq",				"gridss"),
+	("vg.giraffe",									"manta"),
+	#("vg.giraffe",									"gridss"),
+	("vg.map",										"manta"),
+	#("vg.map",										"gridss"),
+	("reference-flow.default",						"manta"),
+	("reference-flow.default",						"gridss")
 ]
 
 
@@ -30,7 +38,16 @@ wildcard_constraints:
 	filter			= "(all)|(pass)",
 	vc_regions		= "(all)|(1)",
 	eval_regions	= "(chr1)|(chr1_selected)",
-	wg_wf			= "(giraffe)|(map)"
+	wg_wf			= "(giraffe)|(map)",
+	panvc3_post		= "(projected)|(mapq-recalculated)"
+
+
+def enclosing_dir(path):
+	return path[:(path.rfind('/'))]
+
+
+def last_component(path):
+	return path[(1 + path.rfind('/')):]
 
 
 rule all:
@@ -149,6 +166,14 @@ module panvc3_workflow:
 
 use rule * from panvc3_workflow as panvc3_*
 
+rule link_panvc3_alignments:
+	input:	"panvc3/{alignments}.{panvc3_post}.sam.gz"
+	output:	"panvc3/{alignments}.{panvc3_post}.all.sam.gz"
+	params:
+		dd	= lambda wildcards: enclosing_dir(wildcards.alignments)
+		ff	= lambda wildcards: last_component(wildcards.alignments)
+	shell:	"cd {params.dd} && ln -s {params.ff}.{panvc3_post}.sam.gz {params.ff}.{panvc3_post}.all.sam.gz"
+
 
 # Enable when this is resolved: https://github.com/snakemake/snakemake/issues/2499
 #configfile: "config/reference-flow.yaml"
@@ -223,10 +248,24 @@ rule vg_map_giraffe:
 	benchmark:		"benchmark/vg_map_giraffe"
 	shell:
 		"vg giraffe --threads {threads} --gbz-name vg/giraffe/index.giraffe.gbz --minimizer-name vg/giraffe/index.min --dist-name vg/giraffe/index.dist --fastq-in {input.reads_1} --fastq-in {input.reads_2} -o BAM > {output}"
+
+
 def manta_region_arg(wildcards):
 	if 'all' == wildcards.vc_regions:
 		return ""
 	return f"--region={wildcards.vc_regions}"
+
+
+rule manta_config_panvc3:
+	conda:			"../workflow/environments/manta.yaml"
+	input:
+		reference	= REFERENCE_FA,
+		alignments	= "panvc3/alignments/{aligner}/alignments.{panvc3_wf}.all.sorted.bam",
+		index		= "panvc3/alignments/{aligner}/alignments.{panvc3_wf}.all.sorted.bam.bai"
+	params:
+		region_arg	= manta_region_arg
+	output:			"manta/panvc3.{aligner}.{panvc3_wf}.{vc_regions}/runWorkflow.py"
+	shell:			"configManta.py --runDir='manta/panvc3.{wildcards.aligner}.{wildcards.panvc3_wf}.{wildcards.vc_regions}' --referenceFasta='{input.reference}' --bam={input.alignments} {params.region_arg}"
 
 
 rule manta_config_vg:
@@ -269,6 +308,18 @@ rule gridss_subset_alignments:
 		chrom		= "regions/chr{vc_regions}.bed"
 	output:			"{alignments}.{vc_regions}.bam"
 	shell:			"gridss_extract_overlapping_fragments --threads {threads} --targetbed {input.chrom} --output {output} {input.alignments}"
+
+
+rule gridss_run_panvc3:
+	conda:			"../workflow/environments/gridss.yaml"
+	threads:		workflow.cores
+	input:
+		reference	= REFERENCE_FA,
+		ref_fai		= REFERENCE_FAI,
+		ref_bwt		= REFERENCE_BWT,
+		alignments	= "panvc3/alignments/{aligner}/alignments.{panvc3_wf}.all.sorted.bam"
+	output:			"gridss/panvc3.{aligner}.{panvc3_wf}.{vc_regions}.vcf.gz"
+	shell:			"gridss --threads {threads} --workingdir work/gridss --reference {input.reference} --output {output} {input.alignments}"
 
 
 rule gridss_run_vg:
