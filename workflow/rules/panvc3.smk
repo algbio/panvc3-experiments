@@ -18,17 +18,11 @@ from snakemake.utils import min_version
 min_version("7.32.4")
 
 
-def identifier_from_path(wildcards):
-	return wildcards.alignments.replace("/", "_")
-
-
 rule sort_sam_gz:
 	message:		"Sorting the alignments"
 	conda:			"../environments/samtools.yaml"
 	threads:		16
-	params:
-		identifier	= identifier_from_path
-	benchmark:		"{config['output_prefix']}/benchmark/panvc3_sort_sam_gz.{params.identifier}"
+	benchmark:		"{config['output_prefix']}/benchmark/panvc3_sort_sam_gz/{alignments}.benchmark"
 	input:			"{alignments}.sam.gz"
 	output:			"{alignments}.sorted.bam"
 	shell:			"../scripts/set-open-file-limit.sh samtools sort -@ {threads} -o {output} {input}"
@@ -38,9 +32,7 @@ rule sort_by_qname_sam_gz:
 	message:		"Sorting the alignments by QNAME"
 	conda:			"../environments/samtools.yaml"
 	threads:		16
-	params:
-		identifier	= identifier_from_path
-	benchmark:		"{config['output_prefix']}/benchmark/panvc3_sort_by_qname_sam_gz.{params.identifier}"
+	benchmark:		"{config['output_prefix']}/benchmark/panvc3_sort_by_qname_sam_gz/{alignments}.benchmark"
 	input:			"{alignments}.sam.gz"
 	output:			"{alignments}.qname-sorted.bam"
 	shell:			"../scripts/set-open-file-limit.sh samtools sort -n -@ {threads} -o {output} {input}"
@@ -89,7 +81,7 @@ rule combine_indexing_input:
 	benchmark:				"{config['output_prefix']}/benchmark/panvc3_combine_indexing_input.f{founder_count}.d{minimum_distance}"
 	threads:				8
 	input:
-		founder_sequences	= expand("{config['output_prefix']}/founder-sequences/{chromosome}.f{{founder_count}}.d{{minimum_distance}}.a2m.gz", chromosome = config['chromosomes']),
+		founder_sequences	= expand("{output_prefix}/founder-sequences/{chromosome}.f{{founder_count}}.d{{minimum_distance}}.a2m.gz", output_prefix = config['output_prefix'], chromosome = config['chromosomes']),
 		remaining_contigs	= "{config['output_prefix']}/founder-sequences/remaining-contigs.fa.gz"
 	output:					
 		combined_contigs	= "{config['output_prefix']}/founder-sequences/indexing-input.f{founder_count}.d{minimum_distance}.a2m.gz"
@@ -121,8 +113,8 @@ rule build_bowtie_index:
 	benchmark:	"{config['output_prefix']}/benchmark/panvc3_index_bowtie2.f{founder_count}.d{minimum_distance}"
 	threads:	workflow.cores
 	input:		"{config['output_prefix']}/msa-index/unaligned.f{founder_count}.d{minimum_distance}.fa"
-	output:		multiext("{config['output_prefix']}/bowtie/index/index.f{founder_count}.d{minimum_distance}", ".1.bt2l", ".2.bt2l", ".3.bt2l", ".4.bt2l", ".rev.1.bt2l", ".rev.2.bt2l")
-	shell:		"bowtie2-build --threads {threads} --large-index {input} {config['output_prefix']}/bowtie/index/index.f{founder_count}.d{minimum_distance}"
+	output:		multiext("{config['output_prefix']}/index/bowtie2/index.f{founder_count}.d{minimum_distance}", ".1.bt2l", ".2.bt2l", ".3.bt2l", ".4.bt2l", ".rev.1.bt2l", ".rev.2.bt2l")
+	shell:		"bowtie2-build --threads {threads} --large-index {input} {config['output_prefix']}/index/bowtie2/index.f{founder_count}.d{minimum_distance}"
 
 
 rule bowtie_align_reads:
@@ -131,13 +123,13 @@ rule bowtie_align_reads:
 	benchmark:			"{config['output_prefix']}/benchmark/panvc3_align_bowtie2.f{founder_count}.d{minimum_distance}"
 	threads:			workflow.cores
 	input:
-		index			= multiext("{config['output_prefix']}/bowtie/index/index.f{founder_count}.d{minimum_distance}", ".1.bt2l", ".2.bt2l", ".3.bt2l", ".4.bt2l", ".rev.1.bt2l", ".rev.2.bt2l"),
+		index			= multiext("{config['output_prefix']}/index/bowtie2/index.f{founder_count}.d{minimum_distance}", ".1.bt2l", ".2.bt2l", ".3.bt2l", ".4.bt2l", ".rev.1.bt2l", ".rev.2.bt2l"),
 		reads_1			= config['reads_1'],
 		reads_2			= config['reads_2']
-	output:				"bowtie/alignments/alignments.f{founder_count}.d{minimum_distance}.sam.gz"
+	output:				"alignments/bowtie2/alignments.f{founder_count}.d{minimum_distance}.sam.gz"
 	params:
 		alignment_count	= lambda wildcards: 2 + wildcards.founder_count # founders + reference + 1
-	shell:				"bowtie2 --threads {threads} -k {params.alignment_count} -1 {input.reads_1} -2 {input.reads_2} -x {config['output_prefix']}/bowtie/index/index.f{founder_count}.d{minimum_distance} | gzip > {output}"
+	shell:				"bowtie2 --threads {threads} -k {params.alignment_count} -1 {input.reads_1} -2 {input.reads_2} -x {config['output_prefix']}/index/bowtie2/index.f{founder_count}.d{minimum_distance} | gzip > {output}"
 
 
 rule project_alignments:
@@ -149,8 +141,9 @@ rule project_alignments:
 				reference			= config["reference"],
 				msa_index			= "{config['output_prefix']}/msa-index/msa-index.f{founder_count}.d{minimum_distance}.dat",
 				seq_output_order	= "{config['output_prefix']}/founder-sequences/contig-list.txt", # FIXME: Use .fai for this.
-				alignments			= "{config['output_prefix']}/{aligner}/alignments/alignments.f{founder_count}.d{minimum_distance}.sorted.bam"
-	output:		"{config['output_prefix']}/{aligner}/alignments/alignments.f{founder_count}.d{minimum_distance}.projected.sam.gz"
+				alignments			= "{config['output_prefix']}/alignments/{aligner}/alignments.f{founder_count}.d{minimum_distance}.sorted.bam"
+	output:		
+				alignments			= "{config['output_prefix']}/alignments/{aligner}/alignments.f{founder_count}.d{minimum_distance}.projected.sam.gz"
 	shell:		"panvc3_project_alignments"
 				" --alignments={input.alignments}"
 				" --msa-index={input.msa_index}"
@@ -161,15 +154,15 @@ rule project_alignments:
 				" --record-index-tag=XI"
 				" --preserve-tag=XS"
 				" --preserve-tag=YS"
-				" | gzip > {output}"
+				" | gzip > {output.alignments}"
 
 
 rule recalculate_mapq:
 	message:	"Recalculating MAPQ"
 	conda:		"../environments/panvc3.yaml"
 	benchmark:	"{config['output_prefix']}/benchmark/panvc3_recalculate_mapq.{aligner}.f{founder_count}.d{minimum_distance}"
-	input:		"{config['output_prefix']}/{aligner}/alignments/alignments.f{founder_count}.d{minimum_distance}.projected.qname-sorted.bam"
-	output:		"{config['output_prefix']}/{aligner}/alignments/alignments.f{founder_count}.d{minimum_distance}.mapq-recalculated.sam.gz"
+	input:		"{config['output_prefix']}/alignments/{aligner}/alignments.f{founder_count}.d{minimum_distance}.projected.qname-sorted.bam"
+	output:		"{config['output_prefix']}/alignments/{aligner}/alignments.f{founder_count}.d{minimum_distance}.mapq-recalculated.sam.gz"
 	shell:		"panvc3_recalculate_mapq"
 				" --alignments={input}"
 				" | gzip > {output}"
