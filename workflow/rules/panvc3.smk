@@ -23,8 +23,8 @@ rule sort_sam_gz:
 	conda:			"../environments/samtools.yaml"
 	threads:		16
 	benchmark:		f"{config['output_prefix']}/benchmark/panvc3_sort_sam_gz/{{alignments}}.benchmark"
-	input:			"{alignments}.sam.gz"
-	output:			"{alignments}.sorted.bam"
+	input:			f"{config['output_prefix']}/{{alignments}}.sam.gz"
+	output:			f"{config['output_prefix']}/{{alignments}}.sorted.bam"
 	shell:			"../scripts/set-open-file-limit.sh samtools sort -@ {threads} -o {output} {input}"
 
 
@@ -33,8 +33,8 @@ rule sort_by_qname_sam_gz:
 	conda:			"../environments/samtools.yaml"
 	threads:		16
 	benchmark:		f"{config['output_prefix']}/benchmark/panvc3_sort_by_qname_sam_gz/{{alignments}}.benchmark"
-	input:			"{alignments}.sam.gz"
-	output:			"{alignments}.qname-sorted.bam"
+	input:			f"{config['output_prefix']}/{{alignments}}.sam.gz"
+	output:			f"{config['output_prefix']}/{{alignments}}.qname-sorted.bam"
 	shell:			"../scripts/set-open-file-limit.sh samtools sort -n -@ {threads} -o {output} {input}"
 
 
