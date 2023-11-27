@@ -63,7 +63,7 @@ rule generate_founder_sequences:
 		" --chromosome={wildcards.chromosome}"
 		" --output-sequences-a2m={output.founders_a2m}"
 		" --dst-chromosome={wildcards.chromosome}"
-		" --pipe=run-gzip.sh"
+		" --pipe=../workflow/scripts/run-gzip.sh"
 
 
 rule filter_reference:
