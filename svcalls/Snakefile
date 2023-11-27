@@ -46,7 +46,7 @@ wildcard_constraints:
 	vc_regions		= "(all)|(1)",
 	eval_regions	= "(chr1)|(chr1_selected)",
 	wg_wf			= "(giraffe)|(map)",
-	panvc3_post		= "(projected)|(mapq-recalculated)"
+	panvc3_post		= "(mapq-recalculated)|(max-mapq)"
 
 
 def enclosing_dir(path):
