@@ -35,7 +35,12 @@ WORKFLOWS = [
 ]
 
 
+from snakemake.utils import min_version
+min_version("7.32.4")
+
+
 wildcard_constraints:
+	aligner			= "[^.]+",
 	filter			= "(all)|(pass)",
 	vc_regions		= "(all)|(1)",
 	eval_regions	= "(chr1)|(chr1_selected)",
@@ -171,7 +176,7 @@ rule link_panvc3_alignments:
 	input:	"panvc3/{alignments}.{panvc3_post}.sam.gz"
 	output:	"panvc3/{alignments}.{panvc3_post}.all.sam.gz"
 	params:
-		dd	= lambda wildcards: enclosing_dir(wildcards.alignments)
+		dd	= lambda wildcards: enclosing_dir(wildcards.alignments),
 		ff	= lambda wildcards: last_component(wildcards.alignments)
 	shell:	"cd {params.dd} && ln -s {params.ff}.{panvc3_post}.sam.gz {params.ff}.{panvc3_post}.all.sam.gz"
 
@@ -261,8 +266,8 @@ rule manta_config_panvc3:
 	conda:			"../workflow/environments/manta.yaml"
 	input:
 		reference	= REFERENCE_FA,
-		alignments	= "panvc3/alignments/{aligner}/alignments.{panvc3_wf}.all.sorted.bam",
-		index		= "panvc3/alignments/{aligner}/alignments.{panvc3_wf}.all.sorted.bam.bai"
+		alignments	= "panvc3/alignments/{aligner}/alignments.{panvc3_wf}.all.alignment-match.sorted.bam",
+		index		= "panvc3/alignments/{aligner}/alignments.{panvc3_wf}.all.alignment-match.sorted.bam.bai"
 	params:
 		region_arg	= manta_region_arg
 	output:			"manta/panvc3.{aligner}.{panvc3_wf}.{vc_regions}/runWorkflow.py"
