@@ -40,6 +40,7 @@ min_version("7.32.4")
 
 
 wildcard_constraints:
+	alignments_		= "^(?!panvc3).+",	# Prevent ambiguity with PanVC 3’s sorting rules.
 	aligner			= "[^.]+",
 	filter			= "(all)|(pass)",
 	vc_regions		= "(all)|(1)",
@@ -107,24 +108,24 @@ rule index_fasta_fai:
 rule sort_bam:
 	conda:		"../workflow/environments/samtools.yaml"
 	threads:	16 # workflow.cores
-	input:		"{alignments}.bam"
-	output:		"{alignments}.sorted.bam"
+	input:		"{alignments_}.bam"
+	output:		"{alignments_}.sorted.bam"
 	shell:		"../workflow/scripts/set-open-file-limit.sh samtools sort -@ {threads} -o {output} {input}"
 
 
 rule sort_sam:
 	conda:		"../workflow/environments/samtools.yaml"
 	threads:	16 # workflow.cores
-	input:		"{alignments}.sam"
-	output:		"{alignments}.sorted.bam"
+	input:		"{alignments_}.sam"
+	output:		"{alignments_}.sorted.bam"
 	shell:		"../workflow/scripts/set-open-file-limit.sh samtools sort -@ {threads} -o {output} {input}"
 
 
 rule sort_sam_gz:
 	conda:		"../workflow/environments/samtools.yaml"
 	threads:	16 # workflow.cores
-	input:		"{alignments}.sam.gz"
-	output:		"{alignments}.sorted.bam"
+	input:		"{alignments_}.sam.gz"
+	output:		"{alignments_}.sorted.bam"
 	shell:		"../workflow/scripts/set-open-file-limit.sh samtools sort -@ {threads} -o {output} {input}"
 
 
