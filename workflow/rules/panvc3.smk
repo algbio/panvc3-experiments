@@ -77,7 +77,7 @@ rule filter_reference:
 		remaining_contigs	= f"{config['output_prefix']}/founder-sequences/remaining-contigs.fa.gz",
 		contig_list			= f"{config['output_prefix']}/founder-sequences/contig-list.txt",
 	params:
-		chromosome_args		= lambda: " ".join(map(lambda x: f"-c {x}", config["chromosomes"]))
+		chromosome_args		= lambda _: " ".join(map(lambda x: f"-c {x}", config["chromosomes"]))
 	shell:
 		"bgzip -c -d -@ {threads} {input.reference} | python3 ../scripts/filter_reference.py {params.chromosome_args} | gzip > {output.remaining_contigs}"
 
