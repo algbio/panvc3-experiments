@@ -179,7 +179,7 @@ rule link_panvc3_alignments:
 	params:
 		dd	= lambda wildcards: enclosing_dir(wildcards.alignments),
 		ff	= lambda wildcards: last_component(wildcards.alignments)
-	shell:	"cd {params.dd} && ln -s {params.ff}.{panvc3_post}.sam.gz {params.ff}.{panvc3_post}.all.sam.gz"
+	shell:	"cd {params.dd} && ln -s {params.ff}.{wildcards.panvc3_post}.sam.gz {params.ff}.{wildcards.panvc3_post}.all.sam.gz"
 
 
 # Enable when this is resolved: https://github.com/snakemake/snakemake/issues/2499
