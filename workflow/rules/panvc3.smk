@@ -55,14 +55,14 @@ rule generate_founder_sequences:
 		founders_a2m		= f"{config['output_prefix']}/founder-sequences/chromosome.{{chromosome}}.f{{founder_count}}.d{{minimum_distance}}.a2m.gz"
 	shell:
 		"vcf2multialign"
-		" --founder-sequences={founder_count}"
-		" --minimum-distance={minimum_distance}"
+		" --founder-sequences={wildcards.founder_count}"
+		" --minimum-distance={wildcards.minimum_distance}"
 		" --input-reference={input.reference}"
-		" --reference-sequence={chromosome}"
+		" --reference-sequence={wildcards.chromosome}"
 		" --input-variants={input.variants}"
-		" --chromosome={chromosome}"
+		" --chromosome={wildcards.chromosome}"
 		" --output-sequences-a2m={output.founders_a2m}"
-		" --dst-chromosome={chromosome}"
+		" --dst-chromosome={wildcards.chromosome}"
 		" --pipe=run-gzip.sh"
 
 
@@ -93,7 +93,7 @@ rule combine_indexing_input:
 		combined_contigs	= f"{config['output_prefix']}/founder-sequences/indexing-input.f{{founder_count}}.d{{minimum_distance}}.a2m.gz"
 	shell:
 		# We don't currently need indexable output, hence we can just concatenate the files. (See also filter_reference.)
-		"cat {founder_sequences} {remaininig_contigs} > {output.combined_contigs}"
+		"cat {input.founder_sequences} {input.remaining_contigs} > {output.combined_contigs}"
 
 
 rule build_msa_index:
@@ -120,7 +120,7 @@ rule build_bowtie_index:
 	threads:	workflow.cores
 	input:		f"{config['output_prefix']}/msa-index/unaligned.f{{founder_count}}.d{{minimum_distance}}.fa"
 	output:		multiext(f"{config['output_prefix']}/index/bowtie2/index.f{{founder_count}}.d{{minimum_distance}}", ".1.bt2l", ".2.bt2l", ".3.bt2l", ".4.bt2l", ".rev.1.bt2l", ".rev.2.bt2l")
-	shell:		f"bowtie2-build --threads {{threads}} --large-index {{input}} {config['output_prefix']}/index/bowtie2/index.f{{founder_count}}.d{{minimum_distance}}"
+	shell:		f"bowtie2-build --threads {{threads}} --large-index {{input}} {config['output_prefix']}/index/bowtie2/index.f{{wildcards.founder_count}}.d{{wildcards.minimum_distance}}"
 
 
 rule bowtie_align_reads:
@@ -135,7 +135,7 @@ rule bowtie_align_reads:
 	output:				f"{config['output_prefix']}/alignments/bowtie2/alignments.f{{founder_count}}.d{{minimum_distance}}.sam.gz"
 	params:
 		alignment_count	= lambda wildcards: 2 + int(wildcards.founder_count) # founders + reference + 1
-	shell:				f"bowtie2 --threads {{threads}} -k {{params.alignment_count}} -1 {{input.reads_1}} -2 {{input.reads_2}} -x {config['output_prefix']}/index/bowtie2/index.f{{founder_count}}.d{{minimum_distance}} | gzip > {{output}}"
+	shell:				f"bowtie2 --threads {{threads}} -k {{params.alignment_count}} -1 {{input.reads_1}} -2 {{input.reads_2}} -x {config['output_prefix']}/index/bowtie2/index.f{{wildcards.founder_count}}.d{{wildcards.minimum_distance}} | gzip > {{output}}"
 
 
 rule project_alignments:
