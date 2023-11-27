@@ -46,7 +46,7 @@ rule generate_founder_sequences:
 		reference			= config["reference"],
 		variants			= "{config['known_variants_prefix']}{chromosome}{config['known_variants_suffix']}"
 	output:
-		founders_a2m		= "{config['output_prefix']}/founder-sequences/{chromosome}.f{founder_count}.d{minimum_distance}.a2m.gz"
+		founders_a2m		= "{config['output_prefix']}/founder-sequences/chromosome.{chromosome}.f{founder_count}.d{minimum_distance}.a2m.gz"
 	shell:
 		"vcf2multialign"
 		" --founder-sequences={founder_count}"
@@ -81,7 +81,7 @@ rule combine_indexing_input:
 	benchmark:				"{config['output_prefix']}/benchmark/panvc3_combine_indexing_input.f{founder_count}.d{minimum_distance}"
 	threads:				8
 	input:
-		founder_sequences	= expand("{output_prefix}/founder-sequences/{chromosome}.f{{founder_count}}.d{{minimum_distance}}.a2m.gz", output_prefix = config['output_prefix'], chromosome = config['chromosomes']),
+		founder_sequences	= expand("{output_prefix}/founder-sequences/chromosome.{chromosome}.f{{founder_count}}.d{{minimum_distance}}.a2m.gz", output_prefix = config['output_prefix'], chromosome = config['chromosomes']),
 		remaining_contigs	= "{config['output_prefix']}/founder-sequences/remaining-contigs.fa.gz"
 	output:					
 		combined_contigs	= "{config['output_prefix']}/founder-sequences/indexing-input.f{founder_count}.d{minimum_distance}.a2m.gz"
@@ -160,9 +160,37 @@ rule project_alignments:
 rule recalculate_mapq:
 	message:	"Recalculating MAPQ"
 	conda:		"../environments/panvc3.yaml"
+	threads:	3
 	benchmark:	"{config['output_prefix']}/benchmark/panvc3_recalculate_mapq.{aligner}.f{founder_count}.d{minimum_distance}"
 	input:		"{config['output_prefix']}/alignments/{aligner}/alignments.f{founder_count}.d{minimum_distance}.projected.qname-sorted.bam"
 	output:		"{config['output_prefix']}/alignments/{aligner}/alignments.f{founder_count}.d{minimum_distance}.mapq-recalculated.sam.gz"
 	shell:		"panvc3_recalculate_mapq"
 				" --alignments={input}"
+				" | gzip > {output}"
+
+
+rule max_mapq:
+	message:	"Filtering alignments by maximum MAPQ"
+	conda:		"../environments/panvc3.yaml"
+	threads:	3
+	benchmark:	"{config['output_prefix']}/benchmark/panvc3_max_mapq.{aligner}.f{founder_count}.d{minimum_distance}"
+	input:		"{config['output_prefix']}/alignments/{aligner}/alignments.f{founder_count}.d{minimum_distance}.mapq-recalculated.sam.gz"
+	output:		"{config['output_prefix']}/alignments/{aligner}/alignments.f{founder_count}.d{minimum_distance}.max-mapq.sam.gz"
+	shell:		"panvc3_subset_alignments"
+				" --alignments={input}"
+				" --best-mapq"
+				" | gzip > {output}"
+
+
+# Rewrite the CIGAR strings for e.g. Manta.
+rule alignment_match:
+	message:	"Rewriting CIGAR strings to use alignment match operations"
+	conda:		"../environments/panvc3.yaml"
+	threads:	3
+	benchmark:  "{config['output_prefix']}/benchmark/panvc3_alignment_match/{alignments}.benchmark"
+	input:		"{alignments}.sam.gz"
+	output:		"{alignments}.alignment-match.sam.gz"
+	shell:		"panvc3_rewrite_cigar"
+				" --alignments={input}"
+				" --output-alignment-match-ops"
 				" | gzip > {output}"
