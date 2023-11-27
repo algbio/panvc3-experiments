@@ -126,7 +126,7 @@ rule bowtie_align_reads:
 		index			= multiext(f"{config['output_prefix']}/index/bowtie2/index.f{{founder_count}}.d{{minimum_distance}}", ".1.bt2l", ".2.bt2l", ".3.bt2l", ".4.bt2l", ".rev.1.bt2l", ".rev.2.bt2l"),
 		reads_1			= config['reads_1'],
 		reads_2			= config['reads_2']
-	output:				"alignments/bowtie2/alignments.f{founder_count}.d{minimum_distance}.sam.gz"
+	output:				f"{config['output_prefix']}/alignments/bowtie2/alignments.f{{founder_count}}.d{{minimum_distance}}.sam.gz"
 	params:
 		alignment_count	= lambda wildcards: 2 + wildcards.founder_count # founders + reference + 1
 	shell:				f"bowtie2 --threads {{threads}} -k {{params.alignment_count}} -1 {{input.reads_1}} -2 {{input.reads_2}} -x {config['output_prefix']}/index/bowtie2/index.f{{founder_count}}.d{{minimum_distance}} | gzip > {{output}}"
