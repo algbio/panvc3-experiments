@@ -18,6 +18,12 @@ from snakemake.utils import min_version
 min_version("7.32.4")
 
 
+wildcard_constraints:
+	founder_count		= r"\d+",
+	minimum_distance	= r"\d+"
+
+
+
 rule sort_sam_gz:
 	message:		"Sorting the alignments"
 	conda:			"../environments/samtools.yaml"
