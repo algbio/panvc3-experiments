@@ -1,0 +1,48 @@
+# Copyright (c) Tuukka Norri 2023
+# Licenced under the MIT licence.
+
+# vim: syntax=snakefile
+
+from snakemake.utils import min_version
+min_version("7.32.4")
+
+
+# Our cluster does not allow outgoing connections from the nodes, so here are the rules needed to install the environments.
+rule bcftools:
+	conda:		"../environments/bcftools.yaml"
+	shell:		"echo 'Installed dependencies in bcftools.yaml'"
+
+
+rule samtools:
+	conda:		"../environments/samtools.yaml"
+	shell:		"echo 'Installed dependencies in samtools.yaml'"
+
+
+rule bwa:
+	conda:		"../environments/bwa.yaml"
+	shell:		"echo 'Installed dependencies in bwa.yaml'"
+
+
+rule manta:
+	conda:		"../environments/manta.yaml"
+	shell:		"echo 'Installed dependencies in manta.yaml'"
+
+
+rule gridss:
+	conda:		"../environments/gridss.yaml"
+	shell:		"echo 'Installed dependencies in gridss.yaml'"
+
+
+rule truvari:
+	conda:		"../environments/truvari.yaml"
+	shell:		"echo 'Installed dependencies in truvari.yaml'"
+
+
+rule panvc3:
+	conda:		"../environments/panvc3.yaml"
+	shell:		"echo 'Installed dependencies in panvc3.yaml"
+
+
+rule biopython:
+	conda:		"../environments/biopython.yaml"
+	shell:		"echo 'Installed dependencies in biopython.yaml"

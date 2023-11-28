@@ -67,37 +67,6 @@ rule summarise:
 	shell:		"python3 summarise.py > {output}"
 
 
-# Our cluster does not allow outgoing connections from the nodes, so here are the rules needed to install the environments.
-rule install_bcftools:
-	conda:		"../workflow/environments/bcftools.yaml"
-	shell:		"echo 'Installed dependencies in bcftools.yaml'"
-
-
-rule install_samtools:
-	conda:		"../workflow/environments/samtools.yaml"
-	shell:		"echo 'Installed dependencies in samtools.yaml'"
-
-
-rule install_bwa:
-	conda:		"../workflow/environments/bwa.yaml"
-	shell:		"echo 'Installed dependencies in bwa.yaml'"
-
-
-rule install_manta:
-	conda:		"../workflow/environments/manta.yaml"
-	shell:		"echo 'Installed dependencies in manta.yaml'"
-
-
-rule install_gridss:
-	conda:		"../workflow/environments/gridss.yaml"
-	shell:		"echo 'Installed dependencies in gridss.yaml'"
-
-
-rule install_truvari:
-	conda:		"../workflow/environments/truvari.yaml"
-	shell:		"echo 'Installed dependencies in truvari.yaml'"
-
-
 rule index_fasta_fai:
 	conda:		"../workflow/environments/samtools.yaml"
 	input:		"{reference}.fa"
