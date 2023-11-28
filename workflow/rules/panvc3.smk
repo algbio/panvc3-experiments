@@ -12,16 +12,23 @@
 # reads_1 (gzipped FASTQ)
 # reads_2 (gzipped FASTQ)
 # output_prefix
+# panvc3_conda_environment_path
+# vcf2multialign_conda_environment_path
+
+# No global variables, see https://github.com/snakemake/snakemake/issues/2499
 
 
 from snakemake.utils import min_version
 min_version("7.32.4")
 
 
+def none_if_empty(x):
+	return x if bool(x) else None
+
+
 wildcard_constraints:
 	founder_count		= r"\d+",
 	minimum_distance	= r"\d+"
-
 
 
 rule sort_sam_gz:
@@ -46,7 +53,7 @@ rule sort_by_qname_sam_gz:
 
 rule generate_founder_sequences:
 	message:				"Generating founder sequences"
-	# FIXME: add Conda
+	conda:					none_if_empty(config['vcf2multialign_conda_environment_path'])
 	benchmark:				f"{config['output_prefix']}/benchmark/panvc3_vcf2multialign.{{chromosome}}.f{{founder_count}}.d{{minimum_distance}}"
 	input:
 		reference			= config["reference"],
@@ -98,7 +105,7 @@ rule combine_indexing_input:
 
 rule build_msa_index:
 	message:				"Building the MSA index"
-	conda:					"../environments/panvc3.yaml"
+	conda:					none_if_empty(config['panvc3_conda_environment_path'])
 	benchmark:				f"{config['output_prefix']}/benchmark/panvc3_index_msa.f{{founder_count}}.d{{minimum_distance}}"
 	input:					f"{config['output_prefix']}/founder-sequences/indexing-input.f{{founder_count}}.d{{minimum_distance}}.a2m.gz"
 	output:
@@ -140,7 +147,7 @@ rule bowtie_align_reads:
 
 rule project_alignments:
 	message:	"Projecting the alignments"
-	conda:		"../environments/panvc3.yaml"
+	conda:		none_if_empty(config['panvc3_conda_environment_path'])
 	benchmark:	f"{config['output_prefix']}/benchmark/panvc3_project_alignments.{{aligner}}.f{{founder_count}}.d{{minimum_distance}}"
 	threads:	workflow.cores
 	input:		
@@ -165,7 +172,7 @@ rule project_alignments:
 
 rule recalculate_mapq:
 	message:	"Recalculating MAPQ"
-	conda:		"../environments/panvc3.yaml"
+	conda:		none_if_empty(config['panvc3_conda_environment_path'])
 	threads:	3
 	benchmark:	f"{config['output_prefix']}/benchmark/panvc3_recalculate_mapq.{{aligner}}.f{{founder_count}}.d{{minimum_distance}}"
 	input:		f"{config['output_prefix']}/alignments/{{aligner}}/alignments.f{{founder_count}}.d{{minimum_distance}}.projected.qname-sorted.bam"
@@ -177,7 +184,7 @@ rule recalculate_mapq:
 
 rule max_mapq:
 	message:	"Filtering alignments by maximum MAPQ"
-	conda:		"../environments/panvc3.yaml"
+	conda:		none_if_empty(config['panvc3_conda_environment_path'])
 	threads:	3
 	benchmark:	f"{config['output_prefix']}/benchmark/panvc3_max_mapq.{{aligner}}.f{{founder_count}}.d{{minimum_distance}}"
 	input:		f"{config['output_prefix']}/alignments/{{aligner}}/alignments.f{{founder_count}}.d{{minimum_distance}}.mapq-recalculated.sam.gz"
@@ -191,7 +198,7 @@ rule max_mapq:
 # Rewrite the CIGAR strings for e.g. Manta.
 rule alignment_match:
 	message:	"Rewriting CIGAR strings to use alignment match operations"
-	conda:		"../environments/panvc3.yaml"
+	conda:		none_if_empty(config['panvc3_conda_environment_path'])
 	threads:	3
 	benchmark:  f"{config['output_prefix']}/benchmark/panvc3_alignment_match/{{alignments}}.benchmark"
 	input:		"{alignments}.sam.gz"
