@@ -1,4 +1,5 @@
 channels:
+- tsnorri
 - conda-forge
 - bioconda
 dependencies:
