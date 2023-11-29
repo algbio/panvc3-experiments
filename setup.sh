@@ -12,21 +12,21 @@ then
 fi
 popd
 
-# Truthset for NA24385
-mkdir -p truth
-pushd truth
-wget -c https://ftp-trace.ncbi.nlm.nih.gov/ReferenceSamples/giab/release/AshkenazimTrio/HG002_NA24385_son/NIST_SV_v0.6/HG002_SVs_Tier1_v0.6.vcf.gz
-wget -c https://ftp-trace.ncbi.nlm.nih.gov/ReferenceSamples/giab/release/AshkenazimTrio/HG002_NA24385_son/NIST_SV_v0.6/HG002_SVs_Tier1_v0.6.bed
-popd
-
 # Known variants
 mkdir -p known-variants
 pushd known-variants
 wget -c https://ftp.1000genomes.ebi.ac.uk/vol1/ftp/release/20130502/ALL.chr1.phase3_shapeit2_mvncall_integrated_v5b.20130502.genotypes.vcf.gz
-# Unfortunately we currently need the uncompressed variants.
+wget -c https://ftp-trace.ncbi.nlm.nih.gov/ReferenceSamples/giab/release/NA12878_HG001/NISTv4.2.1/GRCh37/HG001_GRCh37_1_22_v4.2.1_benchmark.vcf.gz
+wget -c https://ftp-trace.ncbi.nlm.nih.gov/ReferenceSamples/giab/release/AshkenazimTrio/HG002_NA24385_son/NIST_SV_v0.6/HG002_SVs_Tier1_v0.6.vcf.gz
+wget -c https://ftp-trace.ncbi.nlm.nih.gov/ReferenceSamples/giab/release/AshkenazimTrio/HG002_NA24385_son/NIST_SV_v0.6/HG002_SVs_Tier1_v0.6.bed
+# Unfortunately we currently need uncompressed variants for some inputs.
 if [ ! -e ALL.chr1.phase3_shapeit2_mvncall_integrated_v5b.20130502.genotypes.vcf ]
 then
 	gunzip -k ALL.chr1.phase3_shapeit2_mvncall_integrated_v5b.20130502.genotypes.vcf.gz
+fi
+if [ ! -e HG001_GRCh37_1_22_v4.2.1_benchmark.vcf ]
+then
+	gunzip -k HG001_GRCh37_1_22_v4.2.1_benchmark.vcf.gz
 fi
 popd
 
