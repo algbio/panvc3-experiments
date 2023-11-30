@@ -1,0 +1,196 @@
+# Copyright (c) Tuukka Norri 2023
+# Licenced under the MIT licence.
+
+# vim: syntax=snakefile
+
+
+REFERENCE_FA					= "../reference/hs37d5.fa"
+TRUTH							= "../known-variants/HG001_GRCh37_1_22_v4.2.1_benchmark.vcf"
+KNOWN_VARIANTS_PREFIX			= "../known-variants/ALL.chr"
+KNOWN_VARIANTS_SUFFIX			= ".phase3_shapeit2_mvncall_integrated_v5b.20130502.genotypes.vcf.gz"
+SAMPLE_ID						= "HG001"
+CHROMOSOMES						= ['1']
+ALL_CHROMOSOMES					= ['1'] # For generating equivalent seeds when changing CHROMOSOMES
+KNOWN_VARIANTS_REMOVED_SAMPLES	= ["NA12878"]
+CONFIDENT_REGIONS				= "../known-variants/HG001_GRCh37_1_22_v4.2.1_benchmark.bed"
+
+MEM_GB							= 168
+
+READS_1							= f"reads/{SAMPLE_ID}.p1.fq.gz"
+READS_2							= f"reads/{SAMPLE_ID}.p2.fq.gz"
+
+WORKFLOWS = [
+	"bowtie2",
+	"vg-map",
+	"vg-giraffe",
+	"panvc3-bowtie2-f14-d25.mapq-recalculated",
+	"panvc3-bowtie2-f14-d25.mapq-recalculated",
+	"panvc3-bowtie2-f14-d25.max-mapq",
+	"panvc3-bowtie2-f14-d25.max-mapq",
+	"panvc3-bowtie2-f25-d50.mapq-recalculated",
+	"panvc3-bowtie2-f25-d50.mapq-recalculated",
+	"panvc3-bowtie2-f25-d50.max-mapq",
+	"panvc3-bowtie2-f25-d50.max-mapq"
+]
+
+BOWTIE2_CONFIG = {
+	"alignment_id":								SAMPLE_ID,
+	"reference":								REFERENCE_FA,
+	"reads_1":									READS_1,
+	"reads_2":									READS_2
+}
+
+PANVC3_CONFIG = {
+	"alignment_id":								SAMPLE_ID,
+	"reference":								REFERENCE_FA,
+	"chromosomes":								CHROMOSOMES,
+	"known_variants_prefix":					"input/known-variants.",
+	"known_variants_suffix":					".vcf",
+	"reads_1":									READS_1,
+	"reads_2":									READS_2,
+	"panvc3_conda_environment_path":			None,
+	"vcf2multialign_conda_environment_path":	None
+}
+
+VG_CONFIG = {
+	"alignment_id":								SAMPLE_ID,
+	"reference":								REFERENCE_FA,
+	"known_variants":							"input/known-variants.1.vcf",
+	"reads_1":									READS_1,
+	"reads_2":									READS_2,
+	"mem_gb":									MEM_GB
+}
+
+
+def none_if_empty(x):
+	return x if bool(x) else None
+
+
+rule alignments:
+	input:	expand("alignments/{sample_id}.{wf}.bam", sample_id = SAMPLE_ID, wf = WORKFLOWS)
+
+
+rule supporting_read_counts:
+	input:	expand("supporting-reads-counts/{sample_id}.{wf}.{chromosome}.{regions}.txt.gz", sample_id = SAMPLE_ID, wf = WORKFLOWS, chromosome = CHROMOSOMES, regions = ["all", "confident"])
+
+
+module common_rules:
+	snakefile:	"../workflow/rules/common.smk"
+
+use rule * from common_rules as common_*
+
+
+module bowtie2_workflow:
+	snakefile:	"../workflow/rules/bowtie2.smk"
+	config:		BOWTIE2_CONFIG
+
+use rule * from bowtie2_workflow as bowtie2_*
+
+
+module panvc3_workflow:
+	snakefile:	"../workflow/rules/panvc3.smk"
+	config:		PANVC3_CONFIG
+
+use rule * from panvc3_workflow as panvc3_*
+
+
+module vg_workflow:
+	snakefile:	"../workflow/rules/vg.smk"
+	config:		VG_CONFIG
+
+use rule * from vg_workflow as vg_*
+
+
+rule remove_sample_from_known_variants:
+	message:			"Removing the tested sample from known variants"
+	conda:				"../workflow/environments/bcftools.yaml"
+	input:				expand(f"{KNOWN_VARIANTS_PREFIX}{{chromosome}}{KNOWN_VARIANTS_SUFFIX}", chromosome = CHROMOSOMES)
+	output:				"input/known-variants.{chromosome}.vcf"
+	params:
+		removed_samples	= lambda _: ",".join(map(lambda x: f"^{x}", KNOWN_VARIANTS_REMOVED_SAMPLES))
+	shell:				"bcftools view -s {params.removed_samples} -O v -o {output} {input}"
+
+
+rule filter_heterozygous_variants_from_truth:
+	message:		"Filtering heterozygous variants from the truth"
+	conda:			none_if_empty(config.get('vcf2multialign_conda_environment_path'))
+	input:	
+		truth		= TRUTH
+	output:			"input/tested-variants.{chromosome}.vcf"
+	shell:			"vcfcat"
+					" --input={input.truth}"
+					" --output={output}"
+					" --chromosome={wildcards.chromosome}"
+					" --zygosity=1"
+					" --replace-missing-id=unknown-"
+					" --genotype-field=GT"
+					" --omit-info"
+
+
+rule generate_predicted_sequences:
+	message:		"Generating predicted haplotype sequences"
+	conda:			none_if_empty(config.get('vcf2multialign_conda_environment_path'))
+	input:
+		reference	= REFERENCE_FA,
+		variants	= "input/tested-variants.{chromosome}.vcf"
+	output:
+		haplotype_1	= f"input/{SAMPLE_ID}-1.{{chromosome}}.a2m",
+		haplotype_2	= f"input/{SAMPLE_ID}-2.{{chromosome}}.a2m"
+	shell:			f"cd input && vcf2multialign"
+					" --haplotypes"
+					" --input-reference=../{{input.reference}}"
+					" --reference-sequence={{wildcards.chromosome}}"
+					" --input-variants=../{{input.variants}}"
+					" --chromosome={{wildcards.chromosome}}"
+					" --output-sequences-separate"
+					" --separate-output-format=A2M"
+					" --omit-reference-output"
+					" --unaligned-output"
+
+
+rule generate_reads:
+	message:		"Generating reads"
+	conda:			"../workflow/environments/mason.yaml"
+	threads:		workflow.cores
+	input:
+		reference	= f"input/{SAMPLE_ID}-{{chr_copy}}.{{chromosome}}.a2m"
+	output:
+		temp_dir	= temp(directory(f"temp/mason/temp.{SAMPLE_ID}.{{chromosome}}.s{{chr_copy}}")),
+		reads_1		= f"reads/{SAMPLE_ID}.{{chromosome}}.s{{chr_copy}}.p1.fq.gz",
+		reads_2		= f"reads/{SAMPLE_ID}.{{chromosome}}.s{{chr_copy}}.p2.fq.gz",
+		alignments	= f"reads/{SAMPLE_ID}.{{chromosome}}.s{{chr_copy}}.bam"
+	params:
+		chr_idx		= lambda wildcards: ALL_CHROMOSOMES.index(wildcards.chromosome)
+	shell:			"TMPDIR={output.temp_dir} mason_simulator"
+					" --verbose"
+					" --seed $((21 + {wildcards.chr_copy} + {params.chr_idx}))"
+					" --read-name-prefix simulated.s{wildcards.chr_copy}."
+					" --num-threads {threads}"
+					" --num-fragments 30000000"
+					" --out {output.reads_1}"
+					" --out-right {output.reads_2}"
+					" --out-alignment {output.alignments}"
+					" --input-reference {input.reference}"
+					" --seq-technology illumina"
+					" --illumina-read-length 101"
+
+
+rule concatenate_reads:
+	message:		"Concatenating reads"
+	input:
+		reads_1		= expand(f"reads/{SAMPLE_ID}.{{chromosome}}.s1.p{{{{pair}}}}.fq.gz", chromosome = CHROMOSOMES),
+		reads_2		= expand(f"reads/{SAMPLE_ID}.{{chromosome}}.s2.p{{{{pair}}}}.fq.gz", chromosome = CHROMOSOMES)
+	output:			f"reads/{SAMPLE_ID}.p{{pair}}.fq.gz"
+	shell:			"cat {input.reads_1} {input.reads_2} > {output}"
+
+
+rule count_supporting_reads:
+	message:			"Counting supporting reads"
+	conda:				none_if_empty(config.get('panvc3_conda_environment_path'))
+	input:				
+		alignments		= f"alignments/{SAMPLE_ID}.{{wf}}.bam",
+		variants		= "input/tested-variants.{chromosome}.vcf"
+	output:				f"supporting-reads-counts/{SAMPLE_ID}.{{wf}}.{{chromosome}}.{{regions}}.txt.gz"
+	params:
+		regions_param	= lambda wildcards: f"--regions={CONFIDENT_REGIONS}" if "confident" == wildcards.regions else ""
+	shell:				"samtools view -@ 2 {input.alignments} | panvc3_count_supporting_reads --vcf={input.variants} --chr={wildcards.chromosome} --contig={wildcards.chromosome} {params.regions_param} | gzip > {output}"
