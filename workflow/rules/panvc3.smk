@@ -31,30 +31,10 @@ wildcard_constraints:
 	minimum_distance	= r"\d+"
 
 
-rule sort_sam_gz:
-	message:		"Sorting the alignments"
-	conda:			"../environments/samtools.yaml"
-	threads:		16
-	benchmark:		f"benchmark/panvc3/sort_sam_gz/{{alignments}}.benchmark"
-	input:			f"{{alignments}}.sam.gz"
-	output:			f"{{alignments}}.sorted.bam"
-	shell:			"../scripts/set-open-file-limit.sh samtools sort -@ {threads} -o {output} {input}"
-
-
-rule sort_by_qname_sam_gz:
-	message:		"Sorting the alignments by QNAME"
-	conda:			"../environments/samtools.yaml"
-	threads:		16
-	benchmark:		f"benchmark/panvc3/sort_by_qname_sam_gz/{{alignments}}.benchmark"
-	input:			f"{{alignments}}.sam.gz"
-	output:			f"{{alignments}}.qname-sorted.bam"
-	shell:			"../scripts/set-open-file-limit.sh samtools sort -n -@ {threads} -o {output} {input}"
-
-
 rule generate_founder_sequences:
 	message:				"Generating founder sequences"
-	conda:					none_if_empty(config['vcf2multialign_conda_environment_path'])
-	benchmark:				f"benchmark/panvc3_vcf2multialign.{{chromosome}}.f{{founder_count}}.d{{minimum_distance}}"
+	conda:					none_if_empty(config.get('vcf2multialign_conda_environment_path'))
+	benchmark:				f"benchmark/panvc3/vcf2multialign.{{chromosome}}.f{{founder_count}}.d{{minimum_distance}}"
 	input:
 		reference			= config["reference"],
 		variants			= f"{config['known_variants_prefix']}{{chromosome}}{config['known_variants_suffix']}"
@@ -103,9 +83,9 @@ rule combine_indexing_input:
 		"cat {input.founder_sequences} {input.remaining_contigs} > {output.combined_contigs}"
 
 
-rule build_msa_index:
+rule index_msa:
 	message:				"Building the MSA index"
-	conda:					none_if_empty(config['panvc3_conda_environment_path'])
+	conda:					none_if_empty(config.get('panvc3_conda_environment_path'))
 	benchmark:				f"benchmark/panvc3/index_msa.f{{founder_count}}.d{{minimum_distance}}"
 	input:					f"panvc3/founder-sequences/indexing-input.f{{founder_count}}.d{{minimum_distance}}.a2m.gz"
 	output:
@@ -120,7 +100,7 @@ rule build_msa_index:
 		" --pipe-input='gzip -d -c' > {output.unaligned_fasta}"
 
 
-rule build_bowtie_index:
+rule index_bowtie2:
 	message:	"Indexing the reference for Bowtie 2"
 	conda:		"../environments/bowtie2.yaml"
 	benchmark:	f"benchmark/panvc3/index_bowtie2.f{{founder_count}}.d{{minimum_distance}}"
@@ -130,7 +110,7 @@ rule build_bowtie_index:
 	shell:		f"bowtie2-build --threads {{threads}} --large-index {{input}} index/panvc3/bowtie2/index.f{{wildcards.founder_count}}.d{{wildcards.minimum_distance}}"
 
 
-rule bowtie_align_reads:
+rule align_reads_bowtie2:
 	message:			"Aligning reads with Bowtie 2"
 	conda:				"../environments/bowtie2.yaml"
 	benchmark:			f"benchmark/panvc3/align.{config['alignment_id']}.bowtie2.f{{founder_count}}.d{{minimum_distance}}"
@@ -147,7 +127,7 @@ rule bowtie_align_reads:
 
 rule project_alignments:
 	message:	"Projecting the alignments"
-	conda:		none_if_empty(config['panvc3_conda_environment_path'])
+	conda:		none_if_empty(config.get('panvc3_conda_environment_path'))
 	benchmark:	f"benchmark/panvc3/project_alignments.{config['alignment_id']}.{{aligner}}.f{{founder_count}}.d{{minimum_distance}}"
 	threads:	workflow.cores
 	input:		
@@ -172,7 +152,7 @@ rule project_alignments:
 
 rule recalculate_mapq:
 	message:	"Recalculating MAPQ"
-	conda:		none_if_empty(config['panvc3_conda_environment_path'])
+	conda:		none_if_empty(config.get('panvc3_conda_environment_path'))
 	threads:	3
 	benchmark:	f"benchmark/panvc3/recalculate_mapq.{config['alignment_id']}.{{aligner}}.f{{founder_count}}.d{{minimum_distance}}"
 	input:		f"alignments/{config['alignment_id']}.panvc3-{{aligner}}-f{{founder_count}}-d{{minimum_distance}}.projected.qname-sorted.bam"
@@ -184,7 +164,7 @@ rule recalculate_mapq:
 
 rule max_mapq:
 	message:	"Filtering alignments by maximum MAPQ"
-	conda:		none_if_empty(config['panvc3_conda_environment_path'])
+	conda:		none_if_empty(config.get('panvc3_conda_environment_path'))
 	threads:	3
 	benchmark:	f"benchmark/panvc3/max_mapq.{config['alignment_id']}.{{aligner}}.f{{founder_count}}.d{{minimum_distance}}"
 	input:		f"alignments/{config['alignment_id']}.panvc3-{{aligner}}-f{{founder_count}}-d{{minimum_distance}}.mapq-recalculated.sam.gz"
@@ -198,7 +178,7 @@ rule max_mapq:
 # Rewrite the CIGAR strings for e.g. Manta.
 rule alignment_match:
 	message:	"Rewriting CIGAR strings to use alignment match operations"
-	conda:		none_if_empty(config['panvc3_conda_environment_path'])
+	conda:		none_if_empty(config.get('panvc3_conda_environment_path'))
 	threads:	3
 	benchmark:  f"benchmark/panvc3/alignment_match/{{alignments}}.benchmark"
 	input:		"{alignments}.sam.gz"

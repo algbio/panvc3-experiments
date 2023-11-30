@@ -4,34 +4,66 @@
 # vim: syntax=snakefile
 
 
-TRUTH				= "../truth/HG002_SVs_Tier1_v0.6.normalised.vcf.gz"
-KNOWN_VARIANTS		= "../known-variants/ALL.chr1.phase3_shapeit2_mvncall_integrated_v5b.20130502.genotypes.vcf.gz"
-READS_1				= "../reads/HG002_HiSeq30x_subsampled_R1.fastq.gz",
-READS_2				= "../reads/HG002_HiSeq30x_subsampled_R2.fastq.gz"
+REFERENCE_FA					= "../reference/hs37d5.fa"
+TRUTH							= "../known-variants/HG002_SVs_Tier1_v0.6.normalised.vcf.gz"
+KNOWN_VARIANTS_PREFIX			= "../known-variants/ALL.chr"
+KNOWN_VARIANTS_SUFFIX			= ".phase3_shapeit2_mvncall_integrated_v5b.20130502.genotypes.vcf.gz"
+SAMPLE_ID						= "NA24385"
+CHROMSOMES						= ['1']
+READS_1							= "../reads/HG002_HiSeq30x_subsampled_R1.fastq.gz",
+READS_2							= "../reads/HG002_HiSeq30x_subsampled_R2.fastq.gz"
 
-REFERENCE_FA		= "../reference/hs37d5.fa"
-REFERENCE_FAI		= "../reference/hs37d5.fa.fai"
-REFERENCE_BWT		= "../reference/hs37d5.fa.bwt"
-REFERENCE_GZ		= "../reference/hs37d5.fa.gz"
+REFERENCE_FAI					= f"{REFERENCE_FA}.fai"
+REFERENCE_BWT					= f"{REFERENCE_FA}.bwt"
+REFERENCE_GZ					= f"{REFERENCE_FA}.gz"
 
-MEM_GB				= 168
+MEM_GB							= 168
+
+BOWTIE2_CONFIG = {
+	"alignment_id":								SAMPLE_ID,
+	"reference":								REFERENCE_FA,
+	"reads_1":									READS_1,
+	"reads_2":									READS_2
+}
+
+PANVC3_CONFIG = {
+	"alignment_id":								SAMPLE_ID,
+	"reference":								REFERENCE_FA,
+	"chromosomes":								CHROMOSOMES,
+	"known_variants_prefix":					KNOWN_VARIANTS_PREFIX,
+	"known_variants_suffix":					KNOWN_VARIANTS_SUFFIX,
+	"reads_1":									READS_1,
+	"reads_2":									READS_2,
+	"panvc3_conda_environment_path":			None
+	"vcf2multialign_conda_environment_path":	None
+}
+
+VG_CONFIG = {
+	"alignment_id":								SAMPLE_ID,
+	"reference":								REFERENCE_FA,
+	"known_variants":							f"{KNOWN_VARIANTS_PREFIX}1{KNOWN_VARIANTS_SUFFIX}",
+	"reads_1":									READS_1,
+	"reads_2":									READS_2,
+	"mem_gb":									MEM_GB
+}
+
 
 # Remember to check the founder counts from vcf2multialign's output with each given distance.
 WORKFLOWS = [
-	("panvc3.bowtie2.f14.d25.mapq-recalculated",	"manta"),
-	("panvc3.bowtie2.f14.d25.mapq-recalculated",	"gridss"),
-	("panvc3.bowtie2.f14.d25.max-mapq",				"manta"),
-	("panvc3.bowtie2.f14.d25.max-mapq",				"gridss"),
-	("panvc3.bowtie2.f25.d50.mapq-recalculated",	"manta"),
-	("panvc3.bowtie2.f25.d50.mapq-recalculated",	"gridss"),
-	("panvc3.bowtie2.f25.d50.max-mapq",				"manta"),
-	("panvc3.bowtie2.f25.d50.max-mapq",				"gridss"),
-	("vg.giraffe",									"manta"),
-	#("vg.giraffe",									"gridss"),
-	("vg.map",										"manta"),
-	#("vg.map",										"gridss"),
-	("reference-flow.default",						"manta"),
-	("reference-flow.default",						"gridss")
+	("panvc3-bowtie2-f14-d25-mapq-recalculated",	"manta"),
+	("panvc3-bowtie2-f14-d25-mapq-recalculated",	"gridss"),
+	("panvc3-bowtie2-f14-d25-max-mapq",				"manta"),
+	("panvc3-bowtie2-f14-d25-max-mapq",				"gridss"),
+	("panvc3-bowtie2-f25-d50-mapq-recalculated",	"manta"),
+	("panvc3-bowtie2-f25-d50-mapq-recalculated",	"gridss"),
+	("panvc3-bowtie2-f25-d50-max-mapq",				"manta"),
+	("panvc3-bowtie2-f25-d50-max-mapq",				"gridss"),
+	("vg-giraffe",									"manta"),
+	#("vg-giraffe",									"gridss"),
+	("vg-map",										"manta"),
+	#("vg-map",										"gridss"),
+	("reference-flow",						"manta"),
+	("reference-flow",						"gridss")
 ]
 
 
@@ -40,7 +72,6 @@ min_version("7.32.4")
 
 
 wildcard_constraints:
-	alignments_		= "^(?!panvc3).+",	# Prevent ambiguity with PanVC 3’s sorting rules.
 	aligner			= "[^.]+",
 	filter			= "(all)|(pass)",
 	vc_regions		= "(all)|(1)",
@@ -67,66 +98,6 @@ rule summarise:
 	shell:		"python3 summarise.py > {output}"
 
 
-rule index_fasta_fai:
-	conda:		"../workflow/environments/samtools.yaml"
-	input:		"{reference}.fa"
-	output:		"{reference}.fa.fai"
-	shell:		"samtools faidx {input}"
-
-
-rule sort_bam:
-	conda:		"../workflow/environments/samtools.yaml"
-	threads:	16 # workflow.cores
-	input:		"{alignments_}.bam"
-	output:		"{alignments_}.sorted.bam"
-	shell:		"../workflow/scripts/set-open-file-limit.sh samtools sort -@ {threads} -o {output} {input}"
-
-
-rule sort_sam:
-	conda:		"../workflow/environments/samtools.yaml"
-	threads:	16 # workflow.cores
-	input:		"{alignments_}.sam"
-	output:		"{alignments_}.sorted.bam"
-	shell:		"../workflow/scripts/set-open-file-limit.sh samtools sort -@ {threads} -o {output} {input}"
-
-
-rule sort_sam_gz:
-	conda:		"../workflow/environments/samtools.yaml"
-	threads:	16 # workflow.cores
-	input:		"{alignments_}.sam.gz"
-	output:		"{alignments_}.sorted.bam"
-	shell:		"../workflow/scripts/set-open-file-limit.sh samtools sort -@ {threads} -o {output} {input}"
-
-
-rule index_bam:
-	conda:		"../workflow/environments/samtools.yaml"
-	threads:	16 # workflow.cores
-	input:		"{alignments}.bam"
-	output:		"{alignments}.bam.bai"
-	shell:		"samtools index -@ {threads} {input}"
-
-
-rule normalise_vcf_gz:
-	conda:		"../workflow/environments/bcftools.yaml"
-	input:		"{variants}.vcf.gz"
-	output:		"{variants}.normalised.vcf.gz"
-	shell:		"bcftools norm -m - -O z -o {output} {input}"
-
-
-rule index_vcf_gz_csi:
-	conda:		"../workflow/environments/bcftools.yaml"
-	input:		"{variants}.vcf.gz"
-	output:		"{variants}.vcf.gz.csi"
-	shell:		"bcftools index {input}"
-
-
-rule index_vcf_gz_tbi:
-	conda:		"../workflow/environments/bcftools.yaml"
-	input:		"{variants}.vcf.gz"
-	output:		"{variants}.vcf.gz.tbi"
-	shell:		"bcftools index -t {input}"
-
-
 rule bwa_index:	# Needed by gridss
 	conda:		"../workflow/environments/bwa.yaml"
 	input:		"{reference}.fa"
@@ -134,11 +105,22 @@ rule bwa_index:	# Needed by gridss
 	shell:		"bwa index {input}"
 
 
-configfile: "config/panvc3.yaml"
+module common_rules:
+	snakefile:	"../workflow/rules/common.smk"
+
+use rule * from common_rules as common_*
+
+
+module bowtie2_workflow:
+	snakefile:	"../workflow/rules/bowtie2.smk"
+	config:		BOWTIE2_CONFIG
+
+use rule * from bowtie2_workflow as bowtie2_*
+
 
 module panvc3_workflow:
 	snakefile:	"../workflow/rules/panvc3.smk"
-	config:		config["panvc3"]
+	config:		PANVC3_CONFIG
 
 use rule * from panvc3_workflow as panvc3_*
 
@@ -149,6 +131,13 @@ rule link_panvc3_alignments:
 		dd	= lambda wildcards: enclosing_dir(wildcards.alignments),
 		ff	= lambda wildcards: last_component(wildcards.alignments)
 	shell:	"cd {params.dd} && ln -s {params.ff}.{wildcards.panvc3_post}.sam.gz {params.ff}.{wildcards.panvc3_post}.all.sam.gz"
+
+
+module vg_workflow:
+	snakefile:	"../workflow/rules/vg.smk"
+	config:		VG_CONFIG
+
+use rule * from vg_workflow as vg_*
 
 
 # Enable when this is resolved: https://github.com/snakemake/snakemake/issues/2499
@@ -174,62 +163,14 @@ rule reference_flow_run:
 	shell:			"snakemake --printshellcmds --cores {threads} --snakefile lib/reference_flow/snakemake/Snakefile --use-conda --conda-prefix ../conda-env --configfile config/reference-flow-sp.yaml -- && pushd reference-flow/run/experiments/NA24385/thrds0_S1_b1000_ld1 && ln -s chr1-refflow-10-thrds0_S1_b1000_ld1-liftover.sam chr1-refflow-10-thrds0_S1_b1000_ld1-liftover.all.sam"
 
 
-rule vg_index:
-	conda:				"../workflow/environments/vg.yaml"
-	threads:			workflow.cores
-	input:
-		reference		= REFERENCE_FA,
-		known_variants	= KNOWN_VARIANTS
-	output:				multiext("vg/map/index", ".gcsa", ".gcsa.lcp", ".xg")
-	benchmark:			"benchmark/vg_index"
-	shell:
-		"vg autoindex --threads {threads} --workflow map --tmp-dir temp --target-mem {MEM_GB}G -r {input.reference} -v {input.known_variants} -p vg/map/index"
-		
-
-rule vg_index_giraffe:
-	conda:				"../workflow/environments/vg.yaml"
-	threads:			workflow.cores
-	input:
-		reference		= REFERENCE_FA,
-		known_variants	= KNOWN_VARIANTS
-	output:				"vg/giraffe/index.giraffe.gbz"
-	benchmark:	 		"benchmark/vg_index_giraffe"
-	shell:
-		"vg autoindex --threads {threads} --workflow giraffe --tmp-dir temp --target-mem {MEM_GB}G -r {input.reference} -v {input.known_variants} -p vg/giraffe/index"
-
-
-rule vg_map:
-	conda:				"../workflow/environments/vg.yaml"
-	threads:			workflow.cores
-	input:
-		index_gcsa		= "vg/map/index.gcsa",
-		index_gcsa_lcp	= "vg/map/index.gcsa.lcp",
-		index_xg		= "vg/map/index.xg",
-		reads_1			= READS_1,
-		reads_2			= READS_2
-	output:				"vg/mapped-reads.map.all.bam"
-	benchmark:			"benchmark/vg_map"
-	shell:
-		"vg map --threads {threads} --fastq {input.reads_1} --fastq {input.reads_2} --base-name vg/map/index --surject-to bam > {output}"
-	
-
-rule vg_map_giraffe:
-	conda:			"../workflow/environments/vg.yaml"
-	threads:		workflow.cores
-	input:
-		index		= "vg/giraffe/index.giraffe.gbz",
-		reads_1		= READS_1,
-		reads_2		= READS_2
-	output:			"vg/mapped-reads.giraffe.all.bam"
-	benchmark:		"benchmark/vg_map_giraffe"
-	shell:
-		"vg giraffe --threads {threads} --gbz-name vg/giraffe/index.giraffe.gbz --minimizer-name vg/giraffe/index.min --dist-name vg/giraffe/index.dist --fastq-in {input.reads_1} --fastq-in {input.reads_2} -o BAM > {output}"
-
-
 def manta_region_arg(wildcards):
 	if 'all' == wildcards.vc_regions:
 		return ""
 	return f"--region={wildcards.vc_regions}"
+
+
+rule manta_config_bowtie2:
+# Continue here. Also check the rules below.
 
 
 rule manta_config_panvc3:
@@ -348,6 +289,3 @@ rule truvari_run_gridss:
 		truvari_dir	= truvari_dir_name("gridss"),
 		filter_arg	= lambda wildcards: "--passonly" if "pass" == wildcards.filter else ""
 	shell:			"rmdir {params.truvari_dir} && truvari bench -b {TRUTH} -c {input.variants} -o {params.truvari_dir} --reference {REFERENCE_GZ} --includebed regions/{wildcards.eval_regions}.bed --sizemin 0 --sizefilt 0 {params.filter_arg}"
-
-
-ruleorder: sort_bam > sort_sam_gz > sort_sam
