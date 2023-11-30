@@ -13,9 +13,14 @@ rule bcftools:
 	shell:		"echo 'Installed dependencies in bcftools.yaml'"
 
 
-rule samtools:
-	conda:		"../environments/samtools.yaml"
-	shell:		"echo 'Installed dependencies in samtools.yaml'"
+rule biopython:
+	conda:		"../environments/biopython.yaml"
+	shell:		"echo 'Installed dependencies in biopython.yaml'"
+
+
+rule bowtie2:
+	conda:		"../environments/bowtie2.yaml"
+	shell:		"echo 'Installed dependencies in bowtie2.yaml'"
 
 
 rule bwa:
@@ -23,14 +28,29 @@ rule bwa:
 	shell:		"echo 'Installed dependencies in bwa.yaml'"
 
 
-rule manta:
-	conda:		"../environments/manta.yaml"
-	shell:		"echo 'Installed dependencies in manta.yaml'"
-
-
 rule gridss:
 	conda:		"../environments/gridss.yaml"
 	shell:		"echo 'Installed dependencies in gridss.yaml'"
+
+
+rule manta:
+	conda:		"../environments/manta.yaml"
+	shell:		"echo 'installed dependencies in manta.yaml'"
+
+
+rule mason:
+	conda:		"../environments/mason.yaml"
+	shell:		"echo 'installed dependencies in mason.yaml'"
+
+
+rule panvc3:
+	conda:		"../environments/panvc3.yaml"
+	shell:		"echo 'Installed dependencies in panvc3.yaml'"
+
+
+rule samtools:
+	conda:		"../environments/samtools.yaml"
+	shell:		"echo 'Installed dependencies in samtools.yaml'"
 
 
 rule truvari:
@@ -38,11 +58,6 @@ rule truvari:
 	shell:		"echo 'Installed dependencies in truvari.yaml'"
 
 
-rule panvc3:
-	conda:		"../environments/panvc3.yaml"
-	shell:		"echo 'Installed dependencies in panvc3.yaml"
-
-
-rule biopython:
-	conda:		"../environments/biopython.yaml"
-	shell:		"echo 'Installed dependencies in biopython.yaml"
+rule vg:
+	conda:		"../environments/vg.yaml"
+	shell:		"echo 'Installed dependencies in vg.yaml'"
