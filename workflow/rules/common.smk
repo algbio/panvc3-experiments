@@ -92,6 +92,14 @@ rule index_vcf_gz_tbi:
 	shell:		"bcftools index -t {input}"
 
 
+rule normalise_vcf:
+	conda:		"../environments/bcftools.yaml"
+	benchmark:	f"benchmark/normalise_vcf/{{variants}}.benchmark"
+	input:		"{variants}.vcf"
+	output:		"{variants}.normalised.vcf.gz"
+	shell:		"bcftools norm -m - -O z -o {output} {input}"
+
+
 rule normalise_vcf_gz:
 	conda:		"../environments/bcftools.yaml"
 	benchmark:	f"benchmark/normalise_vcf_gz/{{variants}}.benchmark"
