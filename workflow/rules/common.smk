@@ -3,6 +3,15 @@
 
 # vim: syntax=snakefile
 
+rule bgzip:
+	conda:		"../environments/samtools.yaml"
+	threads:	16
+	benchmark:	f"benchmark/bgzip/{{file}}.benchmark"
+	input:		"{file}"
+	output:		"{file}.gz"
+	shell:		"bgzip -k -@ {threads} {input}"
+
+
 rule convert_sam_gz_to_bam:
 	conda:		"../environments/samtools.yaml"
 	threads:	16 # workflow.cores
