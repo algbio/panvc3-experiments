@@ -9,9 +9,10 @@ TRUTH							= "../known-variants/HG002_SVs_Tier1_v0.6.normalised.vcf.gz"
 KNOWN_VARIANTS_PREFIX			= "../known-variants/ALL.chr"
 KNOWN_VARIANTS_SUFFIX			= ".phase3_shapeit2_mvncall_integrated_v5b.20130502.genotypes.vcf.gz"
 SAMPLE_ID						= "NA24385"
-CHROMSOMES						= ['1']
+CHROMOSOMES						= ['1']
 READS_1							= "../reads/HG002_HiSeq30x_subsampled_R1.fastq.gz",
 READS_2							= "../reads/HG002_HiSeq30x_subsampled_R2.fastq.gz"
+CONFIDENT_REGIONS				= "../known-variants/HG002_SVs_Tier1_v0.6.bed"
 
 REFERENCE_FAI					= f"{REFERENCE_FA}.fai"
 REFERENCE_BWT					= f"{REFERENCE_FA}.bwt"
@@ -34,7 +35,7 @@ PANVC3_CONFIG = {
 	"known_variants_suffix":					KNOWN_VARIANTS_SUFFIX,
 	"reads_1":									READS_1,
 	"reads_2":									READS_2,
-	"panvc3_conda_environment_path":			None
+	"panvc3_conda_environment_path":			None,
 	"vcf2multialign_conda_environment_path":	None
 }
 
@@ -50,20 +51,22 @@ VG_CONFIG = {
 
 # Remember to check the founder counts from vcf2multialign's output with each given distance.
 WORKFLOWS = [
-	("panvc3-bowtie2-f14-d25-mapq-recalculated",	"manta"),
-	("panvc3-bowtie2-f14-d25-mapq-recalculated",	"gridss"),
-	("panvc3-bowtie2-f14-d25-max-mapq",				"manta"),
-	("panvc3-bowtie2-f14-d25-max-mapq",				"gridss"),
-	("panvc3-bowtie2-f25-d50-mapq-recalculated",	"manta"),
-	("panvc3-bowtie2-f25-d50-mapq-recalculated",	"gridss"),
-	("panvc3-bowtie2-f25-d50-max-mapq",				"manta"),
-	("panvc3-bowtie2-f25-d50-max-mapq",				"gridss"),
+	("panvc3-bowtie2-f14-d25.mapq-recalculated",	"manta"),
+	("panvc3-bowtie2-f14-d25.mapq-recalculated",	"gridss"),
+	("panvc3-bowtie2-f14-d25.max-mapq",				"manta"),
+	("panvc3-bowtie2-f14-d25.max-mapq",				"gridss"),
+	("panvc3-bowtie2-f25-d50.mapq-recalculated",	"manta"),
+	("panvc3-bowtie2-f25-d50.mapq-recalculated",	"gridss"),
+	("panvc3-bowtie2-f25-d50.max-mapq",				"manta"),
+	("panvc3-bowtie2-f25-d50.max-mapq",				"gridss"),
+	("bowtie2",										"manta"),
+	("bowtie2",										"gridss"),
 	("vg-giraffe",									"manta"),
 	#("vg-giraffe",									"gridss"),
 	("vg-map",										"manta"),
 	#("vg-map",										"gridss"),
-	("reference-flow",						"manta"),
-	("reference-flow",						"gridss")
+	("reference-flow",								"manta"),
+	("reference-flow",								"gridss")
 ]
 
 
@@ -72,20 +75,10 @@ min_version("7.32.4")
 
 
 wildcard_constraints:
-	aligner			= "[^.]+",
-	filter			= "(all)|(pass)",
-	vc_regions		= "(all)|(1)",
-	eval_regions	= "(chr1)|(chr1_selected)",
-	wg_wf			= "(giraffe)|(map)",
-	panvc3_post		= "(mapq-recalculated)|(max-mapq)"
-
-
-def enclosing_dir(path):
-	return path[:(path.rfind('/'))]
-
-
-def last_component(path):
-	return path[(1 + path.rfind('/')):]
+	aligner			= r"[^.]+",
+	filter			= r"(all)|(pass)",
+	vc_regions		= r"(all)|(1)",
+	eval_regions	= r"(chr1)|(chr1_selected)"
 
 
 rule all:
@@ -93,7 +86,7 @@ rule all:
 
 
 rule summarise:
-	input:		expand("truvari/{wf[0]}.{wf[1]}.{vc_regions}.{eval_regions}.{filter}/summary.json", wf = WORKFLOWS, vc_regions = ["all", "1"], eval_regions = ["chr1", "chr1_selected"], filter = ["all", "pass"])
+	input:		expand("truvari/{sample_id}.{wf[0]}.{wf[1]}.{vc_regions}.{eval_regions}.{filter}/summary.json", sample_id = SAMPLE_ID, wf = WORKFLOWS, vc_regions = ["all", "1"], eval_regions = ["chr1", "chr1_selected"], filter = ["all", "pass"])
 	output:		"summary.tsv"
 	shell:		"python3 summarise.py > {output}"
 
@@ -103,6 +96,12 @@ rule bwa_index:	# Needed by gridss
 	input:		"{reference}.fa"
 	output:		multiext("{reference}.fa", ".amb", ".ann", ".bwt", ".pac", ".sa")
 	shell:		"bwa index {input}"
+
+
+rule subset_regions:
+	input:		f"{CONFIDENT_REGIONS}"
+	output:		"regions/chr{chromosome}_selected.bed"
+	shell:		r"grep -E $'^{wildcards.chromosome}\t' {input} > {output}"
 
 
 module common_rules:
@@ -124,14 +123,6 @@ module panvc3_workflow:
 
 use rule * from panvc3_workflow as panvc3_*
 
-rule link_panvc3_alignments:
-	input:	"panvc3/{alignments}.{panvc3_post}.sam.gz"
-	output:	"panvc3/{alignments}.{panvc3_post}.all.sam.gz"
-	params:
-		dd	= lambda wildcards: enclosing_dir(wildcards.alignments),
-		ff	= lambda wildcards: last_component(wildcards.alignments)
-	shell:	"cd {params.dd} && ln -s {params.ff}.{wildcards.panvc3_post}.sam.gz {params.ff}.{wildcards.panvc3_post}.all.sam.gz"
-
 
 module vg_workflow:
 	snakefile:	"../workflow/rules/vg.smk"
@@ -152,15 +143,16 @@ use rule * from vg_workflow as vg_*
 #use rule all from reference_flow_workflow as reference_flow_all with:
 #	benchmark:	"benchmark/reference_flow"
 
-## “.all.” needed for subsetting alignments for gridss.
 rule reference_flow_run:
 	threads:		workflow.cores
 	benchmark:		"benchmark/run_reference_flow_sp"
 	input:
 		reads_1		= READS_1,
 		reads_2		= READS_2
-	output:			"reference-flow/run/experiments/NA24385/thrds0_S1_b1000_ld1/chr1-refflow-10-thrds0_S1_b1000_ld1-liftover.all.sam"
-	shell:			"snakemake --printshellcmds --cores {threads} --snakefile lib/reference_flow/snakemake/Snakefile --use-conda --conda-prefix ../conda-env --configfile config/reference-flow-sp.yaml -- && pushd reference-flow/run/experiments/NA24385/thrds0_S1_b1000_ld1 && ln -s chr1-refflow-10-thrds0_S1_b1000_ld1-liftover.sam chr1-refflow-10-thrds0_S1_b1000_ld1-liftover.all.sam"
+	output:			f"alignments/{SAMPLE_ID}.reference-flow.sam"
+	params:
+		rf_output	= f"reference-flow/run/experiments/{SAMPLE_ID}/thrds0_S1_b1000_ld1/chr1-refflow-10-thrds0_S1_b1000_ld1-liftover.sam"
+	shell:			"snakemake --printshellcmds --cores {threads} --snakefile lib/reference_flow/snakemake/Snakefile --use-conda --conda-prefix ../conda-env --configfile config/reference-flow-sp.yaml -- && mkdir -p alignments && mv {params.rf_output} {output}"
 
 
 def manta_region_arg(wildcards):
@@ -169,51 +161,23 @@ def manta_region_arg(wildcards):
 	return f"--region={wildcards.vc_regions}"
 
 
-rule manta_config_bowtie2:
-# Continue here. Also check the rules below.
-
-
-rule manta_config_panvc3:
+rule manta_config:
 	conda:			"../workflow/environments/manta.yaml"
 	input:
 		reference	= REFERENCE_FA,
-		alignments	= "panvc3/alignments/{aligner}/alignments.{panvc3_wf}.all.alignment-match.sorted.bam",
-		index		= "panvc3/alignments/{aligner}/alignments.{panvc3_wf}.all.alignment-match.sorted.bam.bai"
+		alignments	= f"alignments/{SAMPLE_ID}.{{wf}}.sorted.bam",
+		index		= f"alignments/{SAMPLE_ID}.{{wf}}.sorted.bam.bai"
 	params:
 		region_arg	= manta_region_arg
-	output:			"manta/panvc3.{aligner}.{panvc3_wf}.{vc_regions}/runWorkflow.py"
-	shell:			"configManta.py --runDir='manta/panvc3.{wildcards.aligner}.{wildcards.panvc3_wf}.{wildcards.vc_regions}' --referenceFasta='{input.reference}' --bam={input.alignments} {params.region_arg}"
-
-
-rule manta_config_vg:
-	conda:			"../workflow/environments/manta.yaml"
-	input:
-		reference	= REFERENCE_FA,
-		alignments	= "vg/mapped-reads.{vg_wf}.all.sorted.bam",
-		index		= "vg/mapped-reads.{vg_wf}.all.sorted.bam.bai"
-	params:
-		region_arg	= manta_region_arg
-	output:			"manta/vg.{vg_wf}.{vc_regions}/runWorkflow.py"
-	shell:			"configManta.py --runDir='manta/vg.{wildcards.vg_wf}.{wildcards.vc_regions}' --referenceFasta='{input.reference}' --bam={input.alignments} {params.region_arg}"
-
-
-rule manta_config_reference_flow:
-	conda:			"../workflow/environments/manta.yaml"
-	input:
-		reference	= REFERENCE_FA,
-		alignments	= "reference-flow/run/experiments/NA24385/thrds0_S1_b1000_ld1/chr1-refflow-10-thrds0_S1_b1000_ld1-liftover.sorted.bam",
-		index		= "reference-flow/run/experiments/NA24385/thrds0_S1_b1000_ld1/chr1-refflow-10-thrds0_S1_b1000_ld1-liftover.sorted.bam.bai"
-	params:
-		region_arg	= manta_region_arg
-	output:			"manta/reference-flow.default.{vc_regions}/runWorkflow.py"
-	shell:			"configManta.py --runDir='manta/reference-flow.default.{wildcards.vc_regions}' --referenceFasta='{input.reference}' --bam={input.alignments} {params.region_arg}"
+	output:			f"manta/{SAMPLE_ID}.{{wf}}.{{vc_regions}}/runWorkflow.py"
+	shell:			f"configManta.py --runDir='manta/{SAMPLE_ID}.{{wildcards.wf}}.{{wildcards.vc_regions}}' --referenceFasta='{{input.reference}}' --bam={{input.alignments}} {{params.region_arg}}"
 
 
 rule manta_run:
 	conda:			"../workflow/environments/manta.yaml"
 	threads:		workflow.cores
-	input:			"manta/{wf}/runWorkflow.py"
-	output:			"manta/{wf}/results/variants/diploidSV.vcf.gz"
+	input:			f"manta/{SAMPLE_ID}.{{wf}}.{{vc_regions}}/runWorkflow.py"
+	output:			f"manta/{SAMPLE_ID}.{{wf}}.{{vc_regions}}/results/variants/diploidSV.vcf.gz"
 	shell:			"{input} -j {threads} -g {MEM_GB}"
 
 
@@ -221,71 +185,60 @@ rule gridss_subset_alignments:
 	conda:			"../workflow/environments/gridss.yaml"
 	threads:		workflow.cores
 	input:
-		alignments	= "{alignments}.all.sorted.bam",
-		chrom		= "regions/chr{vc_regions}.bed"
-	output:			"{alignments}.{vc_regions}.bam"
-	shell:			"gridss_extract_overlapping_fragments --threads {threads} --targetbed {input.chrom} --output {output} {input.alignments}"
+		alignments	= f"alignments/{SAMPLE_ID}.{{wf}}.sorted.bam",
+		regions		= "regions/chr{vc_regions}.bed"
+	output:			f"gridss/{SAMPLE_ID}.{{wf}}.subset.{{vc_regions}}.bam"
+	shell:			"gridss_extract_overlapping_fragments --threads {threads} --targetbed {input.regions} --output {output} {input.alignments}"
 
 
-rule gridss_run_panvc3:
+def gridss_alignment_input(wildcards):
+	if "all" == wildcards.vc_regions:
+		return f"alignments/{SAMPLE_ID}.{{wf}}.sorted.bam"
+	else:
+		return f"gridss/{SAMPLE_ID}.{{wf}}.subset.{{vc_regions}}.bam"
+
+rule gridss_run:
 	conda:			"../workflow/environments/gridss.yaml"
 	threads:		workflow.cores
 	input:
 		reference	= REFERENCE_FA,
 		ref_fai		= REFERENCE_FAI,
 		ref_bwt		= REFERENCE_BWT,
-		alignments	= "panvc3/alignments/{aligner}/alignments.{panvc3_wf}.all.sorted.bam"
-	output:			"gridss/panvc3.{aligner}.{panvc3_wf}.{vc_regions}.vcf.gz"
-	shell:			"gridss --threads {threads} --workingdir work/gridss --reference {input.reference} --output {output} {input.alignments}"
-
-
-rule gridss_run_vg:
-	conda:			"../workflow/environments/gridss.yaml"
-	threads:		workflow.cores
-	input:
-		reference	= REFERENCE_FA,
-		ref_fai		= REFERENCE_FAI,
-		ref_bwt		= REFERENCE_BWT,
-		alignments	= "vg/mapped-reads.{vg_wf}.{vc_regions}.sorted.bam"
-	output:			"gridss/vg.{vg_wf}.{vc_regions}.vcf.gz"
-	shell:			"gridss --threads {threads} --workingdir work/gridss --reference {input.reference} --output {output} {input.alignments}"
-
-
-rule gridss_run_reference_flow:
-	conda:			"../workflow/environments/gridss.yaml"
-	threads:		workflow.cores
-	input:
-		reference	= REFERENCE_FA,
-		ref_fai		= REFERENCE_FAI,
-		ref_bwt		= REFERENCE_BWT,
-		alignments	= "reference-flow/run/experiments/NA24385/thrds0_S1_b1000_ld1/chr1-refflow-10-thrds0_S1_b1000_ld1-liftover.{vc_regions}.sorted.bam"
-	output:			"gridss/reference-flow.default.{vc_regions}.vcf.gz"
-	shell:			"gridss --threads {threads} --workingdir work/gridss --reference {input.reference} --output {output} {input.alignments}"
+		alignments	= gridss_alignment_input
+	output:			
+		variants	= f"gridss/{SAMPLE_ID}.{{wf}}.{{vc_regions}}.vcf.gz",
+		tempdir		= temp(directory(f"temp/gridss/{SAMPLE_ID}.{{wf}}.{{vc_regions}}"))
+	shell:			"mkdir -p {output.tempdir} && gridss --threads {threads} --workingdir {output.tempdir} --reference {input.reference} --output {output.variants} {input.alignments}"
 
 
 def truvari_dir_name(variant_caller):
-	return lambda wildcards: f"truvari/{wildcards.wf}.{variant_caller}.{wildcards.vc_regions}.{wildcards.eval_regions}.{wildcards.filter}"
+	return lambda wildcards: f"truvari/{SAMPLE_ID}.{wildcards.wf}.{variant_caller}.{wildcards.vc_regions}.{wildcards.eval_regions}.{wildcards.filter}"
+
+def truvari_filter_arg(wildcards):
+	return "--passonly" if "pass" == wildcards.filter else ""
 
 
 rule truvari_run_manta:
 	conda:			"../workflow/environments/truvari.yaml"
 	input:
-		variants	= "manta/{wf}.{vc_regions}/results/variants/diploidSV.normalised.vcf.gz",
-		index		= "manta/{wf}.{vc_regions}/results/variants/diploidSV.normalised.vcf.gz.tbi"
-	output:			"truvari/{wf}.manta.{vc_regions}.{eval_regions}.{filter}/summary.json"
+		variants	= f"manta/{SAMPLE_ID}.{{wf}}.{{vc_regions}}/results/variants/diploidSV.normalised.vcf.gz",
+		index		= f"manta/{SAMPLE_ID}.{{wf}}.{{vc_regions}}/results/variants/diploidSV.normalised.vcf.gz.tbi",
+		regions		= "regions/{eval_regions}.bed"
+	output:			f"truvari/{SAMPLE_ID}.{{wf}}.manta.{{vc_regions}}.{{eval_regions}}.{{filter}}/summary.json"
 	params:
 		truvari_dir	= truvari_dir_name("manta"),
-		filter_arg	= lambda wildcards: "--passonly" if "pass" == wildcards.filter else ""
-	shell:			"rmdir {params.truvari_dir} && truvari bench -b {TRUTH} -c {input.variants} -o {params.truvari_dir} --reference {REFERENCE_GZ} --includebed regions/{wildcards.eval_regions}.bed --sizemin 0 --sizefilt 0 {params.filter_arg}"
+		filter_arg	= truvari_filter_arg
+	shell:			f"rmdir {{params.truvari_dir}} && truvari bench -b {TRUTH} -c {{input.variants}} -o {{params.truvari_dir}} --reference {REFERENCE_GZ} --includebed {{input.regions}} --sizemin 0 --sizefilt 0 {{params.filter_arg}}"
 
 
 rule truvari_run_gridss:
 	conda:			"../workflow/environments/truvari.yaml"
 	input:
-		variants	= "gridss/{wf}.{vc_regions}.normalised.vcf.gz",
-		index		= "gridss/{wf}.{vc_regions}.normalised.vcf.gz.tbi"
-	output:			"truvari/{wf}.gridss.{vc_regions}.{eval_regions}.{filter}/summary.json"
+		variants	= f"gridss/{SAMPLE_ID}.{{wf}}.{{vc_regions}}.normalised.vcf.gz",
+		index		= f"gridss/{SAMPLE_ID}.{{wf}}.{{vc_regions}}.normalised.vcf.gz.tbi",
+		regions		= "regions/{eval_regions}.bed"
+	output:			f"truvari/{SAMPLE_ID}.{{wf}}.gridss.{{vc_regions}}.{{eval_regions}}.{{filter}}/summary.json"
 	params:
 		truvari_dir	= truvari_dir_name("gridss"),
-		filter_arg	= lambda wildcards: "--passonly" if "pass" == wildcards.filter else ""
-	shell:			"rmdir {params.truvari_dir} && truvari bench -b {TRUTH} -c {input.variants} -o {params.truvari_dir} --reference {REFERENCE_GZ} --includebed regions/{wildcards.eval_regions}.bed --sizemin 0 --sizefilt 0 {params.filter_arg}"
+		filter_arg	= truvari_filter_arg
+	shell:			f"rmdir {{params.truvari_dir}} && truvari bench -b {TRUTH} -c {{input.variants}} -o {{params.truvari_dir}} --reference {REFERENCE_GZ} --includebed {{input.regions}} --sizemin 0 --sizefilt 0 {{params.filter_arg}}"
