@@ -27,4 +27,4 @@ if __name__ == "__main__":
 	parser.add_argument('-o', '--output-contig-ids', type = argparse.FileType('w'), help = "Output contig identifiers from the reference")
 	args = parser.parse_args()
 	
-	process(frozenset(args.contig), args.output_chromosomes)
+	process(frozenset(args.contig), args.output_contig_ids)
