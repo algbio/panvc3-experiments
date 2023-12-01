@@ -39,7 +39,8 @@ rule generate_founder_sequences:
 		reference			= config["reference"],
 		variants			= f"{config['known_variants_prefix']}{{chromosome}}{config['known_variants_suffix']}"
 	output:
-		founders_a2m		= f"panvc3/founder-sequences/chromosome.{{chromosome}}.f{{founder_count}}.d{{minimum_distance}}.a2m.gz"
+		founders_a2m		= f"panvc3/founder-sequences/chromosome.{{chromosome}}.f{{founder_count}}.d{{minimum_distance}}.a2m.gz",
+		overlaps			= f"panvc3/founder-sequences/overlaps.{{chromosome}}.f{{founder_count}}.d{{minimum_distance}}.tsv"
 	shell:
 		"vcf2multialign"
 		" --founder-sequences={wildcards.founder_count}"
@@ -51,6 +52,7 @@ rule generate_founder_sequences:
 		" --output-sequences-a2m={output.founders_a2m}"
 		" --dst-chromosome={wildcards.chromosome}"
 		" --pipe=../workflow/scripts/run-gzip.sh"
+		" --output-overlaps={output.overlaps}"
 
 
 rule filter_reference:
