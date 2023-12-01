@@ -18,13 +18,13 @@ rule index:
 	threads:			workflow.cores
 	input:
 		reference		= config['reference'],
-		known_variants	= config['known_variants']
+		known_variants	= f"{config['known_variants']}.gz"
 	output:
 		index			= multiext("index/vg-map/index", ".gcsa", ".gcsa.lcp", ".xg"),
 		temp_dir		= temp(directory("temp/vg"))
 	benchmark:			"benchmark/vg_index"
 	shell:
-		f"vg autoindex --threads {{threads}} --workflow map --tmp-dir {{output.temp_dir}} --target-mem {config['mem_gb']}G -r {{input.reference}} -v {{input.known_variants}} -p index/vg-map/index"
+		f"mkdir -p temp/vg && vg autoindex --threads {{threads}} --workflow map --tmp-dir {{output.temp_dir}} --target-mem {config['mem_gb']}G -r {{input.reference}} -v {{input.known_variants}} -p index/vg-map/index"
 		
 
 rule index_giraffe:
@@ -33,13 +33,13 @@ rule index_giraffe:
 	threads:			workflow.cores
 	input:
 		reference		= config['reference'],
-		known_variants	= config['known_variants']
+		known_variants	= f"{config['known_variants']}.gz"
 	output:				
 		index			= "index/vg-giraffe/index.gbz",
 		temp_dir		= temp(directory("temp/vg"))
 	benchmark:	 		"benchmark/vg_index_giraffe"
 	shell:
-		f"vg autoindex --threads {{threads}} --workflow giraffe --tmp-dir {{output.temp_dir}} --target-mem {config['mem_gb']}G -r {{input.reference}} -v {{input.known_variants}} -p index/vg-giraffe/index"
+		f"mkdir -p temp/vg && vg autoindex --threads {{threads}} --workflow giraffe --tmp-dir {{output.temp_dir}} --target-mem {config['mem_gb']}G -r {{input.reference}} -v {{input.known_variants}} -p index/vg-giraffe/index"
 
 
 rule map:
