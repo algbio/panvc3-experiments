@@ -51,22 +51,22 @@ VG_CONFIG = {
 
 # Remember to check the founder counts from vcf2multialign's output with each given distance.
 WORKFLOWS = [
-	("panvc3-bowtie2-f14-d25.mapq-recalculated",	"manta"),
-	("panvc3-bowtie2-f14-d25.mapq-recalculated",	"gridss"),
-	("panvc3-bowtie2-f14-d25.max-mapq",				"manta"),
-	("panvc3-bowtie2-f14-d25.max-mapq",				"gridss"),
-	("panvc3-bowtie2-f25-d50.mapq-recalculated",	"manta"),
-	("panvc3-bowtie2-f25-d50.mapq-recalculated",	"gridss"),
-	("panvc3-bowtie2-f25-d50.max-mapq",				"manta"),
-	("panvc3-bowtie2-f25-d50.max-mapq",				"gridss"),
+	#("panvc3-bowtie2-f14-d25.mapq-recalculated",	"manta"),
+	#("panvc3-bowtie2-f14-d25.mapq-recalculated",	"gridss"),
+	#("panvc3-bowtie2-f14-d25.max-mapq",				"manta"),
+	#("panvc3-bowtie2-f14-d25.max-mapq",				"gridss"),
+	#("panvc3-bowtie2-f25-d50.mapq-recalculated",	"manta"),
+	#("panvc3-bowtie2-f25-d50.mapq-recalculated",	"gridss"),
+	#("panvc3-bowtie2-f25-d50.max-mapq",				"manta"),
+	#("panvc3-bowtie2-f25-d50.max-mapq",				"gridss"),
 	("bowtie2",										"manta"),
-	("bowtie2",										"gridss"),
+	#("bowtie2",										"gridss"),
 	("vg-giraffe",									"manta"),
 	#("vg-giraffe",									"gridss"),
 	("vg-map",										"manta"),
 	#("vg-map",										"gridss"),
-	("reference-flow",								"manta"),
-	("reference-flow",								"gridss")
+	#("reference-flow",								"manta"),
+	#("reference-flow",								"gridss")
 ]
 
 
@@ -211,34 +211,28 @@ rule gridss_run:
 	shell:			"mkdir -p {output.tempdir} && gridss --threads {threads} --workingdir {output.tempdir} --reference {input.reference} --output {output.variants} {input.alignments}"
 
 
-def truvari_dir_name(variant_caller):
-	return lambda wildcards: f"truvari/{SAMPLE_ID}.{wildcards.wf}.{variant_caller}.{wildcards.vc_regions}.{wildcards.eval_regions}.{wildcards.filter}"
+def truvari_input(suffix):
+	def helper(wildcards):
+		if "manta" == wildcards.variant_caller:
+			return f"{{variant_caller}}/{SAMPLE_ID}.{{wf}}.{{vc_regions}}/results/variants/diploidSV.normalised.vcf.gz{suffix}"
+		else:
+			return f"{{variant_caller}}/{SAMPLE_ID}.{{wf}}.{{vc_regions}}.normalised.vcf.gz"
+	return helper
+
+def truvari_dir_name(wildcards):
+	return f"truvari/{SAMPLE_ID}.{wildcards.wf}.{wildcards.variant_caller}.{wildcards.vc_regions}.{wildcards.eval_regions}.{wildcards.filter}"
 
 def truvari_filter_arg(wildcards):
 	return "--passonly" if "pass" == wildcards.filter else ""
 
-
-rule truvari_run_manta:
+rule truvari_run:
 	conda:			"../workflow/environments/truvari.yaml"
 	input:
-		variants	= f"manta/{SAMPLE_ID}.{{wf}}.{{vc_regions}}/results/variants/diploidSV.normalised.vcf.gz",
-		index		= f"manta/{SAMPLE_ID}.{{wf}}.{{vc_regions}}/results/variants/diploidSV.normalised.vcf.gz.tbi",
+		variants	= truvari_input(""),
+		index		= truvari_input(".tbi"),
 		regions		= "regions/{eval_regions}.bed"
-	output:			f"truvari/{SAMPLE_ID}.{{wf}}.manta.{{vc_regions}}.{{eval_regions}}.{{filter}}/summary.json"
+	output:			f"truvari/{SAMPLE_ID}.{{wf}}.{{variant_caller}}.{{vc_regions}}.{{eval_regions}}.{{filter}}/summary.json"
 	params:
-		truvari_dir	= truvari_dir_name("manta"),
-		filter_arg	= truvari_filter_arg
-	shell:			f"rmdir {{params.truvari_dir}} && truvari bench -b {TRUTH} -c {{input.variants}} -o {{params.truvari_dir}} --reference {REFERENCE_GZ} --includebed {{input.regions}} --sizemin 0 --sizefilt 0 {{params.filter_arg}}"
-
-
-rule truvari_run_gridss:
-	conda:			"../workflow/environments/truvari.yaml"
-	input:
-		variants	= f"gridss/{SAMPLE_ID}.{{wf}}.{{vc_regions}}.normalised.vcf.gz",
-		index		= f"gridss/{SAMPLE_ID}.{{wf}}.{{vc_regions}}.normalised.vcf.gz.tbi",
-		regions		= "regions/{eval_regions}.bed"
-	output:			f"truvari/{SAMPLE_ID}.{{wf}}.gridss.{{vc_regions}}.{{eval_regions}}.{{filter}}/summary.json"
-	params:
-		truvari_dir	= truvari_dir_name("gridss"),
+		truvari_dir	= truvari_dir_name,
 		filter_arg	= truvari_filter_arg
 	shell:			f"rmdir {{params.truvari_dir}} && truvari bench -b {TRUTH} -c {{input.variants}} -o {{params.truvari_dir}} --reference {REFERENCE_GZ} --includebed {{input.regions}} --sizemin 0 --sizefilt 0 {{params.filter_arg}}"
