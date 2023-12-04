@@ -7,7 +7,7 @@
 # ––––––––––––––––––
 # alignment_id
 # reference (FASTA)
-# known_variants (VCF)
+# known_variants (bgzipped VCF)
 # reads_1 (gzipped FASTQ)
 # reads_2 (gzipped FASTQ)
 # mem_gb
@@ -18,7 +18,7 @@ rule index:
 	threads:			workflow.cores
 	input:
 		reference		= config['reference'],
-		known_variants	= f"{config['known_variants']}.gz"
+		known_variants	= f"{config['known_variants']}"
 	output:
 		index			= multiext("index/vg-map/index", ".gcsa", ".gcsa.lcp", ".xg"),
 		temp_dir		= temp(directory("temp/vg"))
@@ -33,7 +33,7 @@ rule index_giraffe:
 	threads:			workflow.cores
 	input:
 		reference		= config['reference'],
-		known_variants	= f"{config['known_variants']}.gz"
+		known_variants	= f"{config['known_variants']}"
 	output:				
 		index			= "index/vg-giraffe/index.giraffe.gbz",
 		dist			= "index/vg-giraffe/index.dist",
