@@ -55,7 +55,7 @@ PANVC3_CONFIG = {
 VG_CONFIG = {
 	"alignment_id":								SAMPLE_ID,
 	"reference":								REFERENCE_FA,
-	"known_variants":							"input/known-variants.1.vcf",
+	"known_variants":							"input/known-variants.1.vcf.gz",
 	"reads_1":									READS_1,
 	"reads_2":									READS_2,
 	"mem_gb":									MEM_GB
