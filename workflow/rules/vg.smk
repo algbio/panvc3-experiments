@@ -35,7 +35,9 @@ rule index_giraffe:
 		reference		= config['reference'],
 		known_variants	= f"{config['known_variants']}.gz"
 	output:				
-		index			= "index/vg-giraffe/index.gbz",
+		index			= "index/vg-giraffe/index.giraffe.gbz",
+		dist			= "index/vg-giraffe/index.dist",
+		min			= "index/vg-giraffe/index.min",
 		temp_dir		= temp(directory("temp/vg"))
 	benchmark:	 		"benchmark/vg_index_giraffe"
 	shell:
@@ -59,10 +61,12 @@ rule map_giraffe:
 	conda:			"../environments/vg.yaml"
 	threads:		workflow.cores
 	input:
-		index		= "index/vg-giraffe/index.gbz",
+		index		= "index/vg-giraffe/index.giraffe.gbz",
+		dist		= "index/vg-giraffe/index.dist",
+		min			= "index/vg-giraffe/index.min",
 		reads_1		= config['reads_1'],
 		reads_2		= config['reads_2']
 	output:			f"alignments/{config['alignment_id']}.vg-giraffe.bam"
 	benchmark:		f"benchmark/vg_map_giraffe.{config['alignment_id']}"
 	shell:
-		"vg giraffe --threads {threads} --gbz-name vg/giraffe/index.giraffe.gbz --minimizer-name vg/giraffe/index.min --dist-name vg/giraffe/index.dist --fastq-in {input.reads_1} --fastq-in {input.reads_2} -o BAM > {output}"
+		"vg giraffe --threads {threads} --gbz-name {input.index} --minimizer-name {input.min} --dist-name {input.dist} --fastq-in {input.reads_1} --fastq-in {input.reads_2} -o BAM > {output}"
