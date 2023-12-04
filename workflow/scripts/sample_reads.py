@@ -8,7 +8,7 @@ import sys
 
 if __name__ == "__main__":
 	parser = argparse.ArgumentParser("Sample reads from a FASTQ file.")
-	parser.add_argument('sampling-probability', type = float, help = "Sampling probability (using a uniform distribution).")
+	parser.add_argument('sampling_probability', type = float, help = "Sampling probability (using a uniform distribution).")
 	parser.add_argument('seed', type = int, help = "Random seed.")
 	args = parser.parse_args()
 
