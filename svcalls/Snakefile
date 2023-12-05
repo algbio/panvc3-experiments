@@ -20,6 +20,26 @@ REFERENCE_GZ					= f"{REFERENCE_FA}.gz"
 
 MEM_GB							= 168
 
+# Remember to check the founder counts from vcf2multialign's output with each given distance.
+WORKFLOWS = [
+	#("panvc3-bowtie2-f14-d25.mapq-recalculated",	"manta"),
+	#("panvc3-bowtie2-f14-d25.mapq-recalculated",	"gridss"),
+	#("panvc3-bowtie2-f14-d25.max-mapq",				"manta"),
+	#("panvc3-bowtie2-f14-d25.max-mapq",				"gridss"),
+	#("panvc3-bowtie2-f25-d50.mapq-recalculated",	"manta"),
+	#("panvc3-bowtie2-f25-d50.mapq-recalculated",	"gridss"),
+	#("panvc3-bowtie2-f25-d50.max-mapq",				"manta"),
+	#("panvc3-bowtie2-f25-d50.max-mapq",				"gridss"),
+	("bowtie2",										"manta"),
+	#("bowtie2",										"gridss"),
+	("vg-giraffe",									"manta"),
+	#("vg-giraffe",									"gridss"),
+	("vg-map",										"manta"),
+	#("vg-map",										"gridss"),
+	#("reference-flow",								"manta"),
+	#("reference-flow",								"gridss")
+]
+
 BOWTIE2_CONFIG = {
 	"alignment_id":								SAMPLE_ID,
 	"reference":								REFERENCE_FA,
@@ -49,32 +69,12 @@ VG_CONFIG = {
 }
 
 
-# Remember to check the founder counts from vcf2multialign's output with each given distance.
-WORKFLOWS = [
-	#("panvc3-bowtie2-f14-d25.mapq-recalculated",	"manta"),
-	#("panvc3-bowtie2-f14-d25.mapq-recalculated",	"gridss"),
-	#("panvc3-bowtie2-f14-d25.max-mapq",				"manta"),
-	#("panvc3-bowtie2-f14-d25.max-mapq",				"gridss"),
-	#("panvc3-bowtie2-f25-d50.mapq-recalculated",	"manta"),
-	#("panvc3-bowtie2-f25-d50.mapq-recalculated",	"gridss"),
-	#("panvc3-bowtie2-f25-d50.max-mapq",				"manta"),
-	#("panvc3-bowtie2-f25-d50.max-mapq",				"gridss"),
-	("bowtie2",										"manta"),
-	#("bowtie2",										"gridss"),
-	("vg-giraffe",									"manta"),
-	#("vg-giraffe",									"gridss"),
-	("vg-map",										"manta"),
-	#("vg-map",										"gridss"),
-	#("reference-flow",								"manta"),
-	#("reference-flow",								"gridss")
-]
-
-
 from snakemake.utils import min_version
 min_version("7.32.4")
 
 
 wildcard_constraints:
+	sample_id		= r"[^.]+",
 	aligner			= r"[^.]+",
 	filter			= r"(all)|(pass)",
 	vc_regions		= r"(all)|(1)",
@@ -145,13 +145,13 @@ use rule * from vg_workflow as vg_*
 
 rule reference_flow_run:
 	threads:		workflow.cores
-	benchmark:		"benchmark/run_reference_flow_sp"
+	benchmark:		"benchmark/run_reference_flow_sp/{sample_id}"
 	input:
 		reads_1		= READS_1,
 		reads_2		= READS_2
-	output:			f"alignments/{SAMPLE_ID}.reference-flow.sam"
+	output:			"alignments/{sample_id}.reference-flow.sam"
 	params:
-		rf_output	= f"reference-flow/run/experiments/{SAMPLE_ID}/thrds0_S1_b1000_ld1/chr1-refflow-10-thrds0_S1_b1000_ld1-liftover.sam"
+		rf_output	= "reference-flow/run/experiments/{sample_id}/thrds0_S1_b1000_ld1/chr1-refflow-10-thrds0_S1_b1000_ld1-liftover.sam"
 	shell:			"snakemake --printshellcmds --cores {threads} --snakefile lib/reference_flow/snakemake/Snakefile --use-conda --conda-prefix ../conda-env --configfile config/reference-flow-sp.yaml -- && mkdir -p alignments && mv {params.rf_output} {output}"
 
 
@@ -165,37 +165,37 @@ rule manta_config:
 	conda:			"../workflow/environments/manta.yaml"
 	input:
 		reference	= REFERENCE_FA,
-		alignments	= f"alignments/{SAMPLE_ID}.{{wf}}.sorted.bam",
-		index		= f"alignments/{SAMPLE_ID}.{{wf}}.sorted.bam.bai"
+		alignments	= "alignments/{sample_id}.{wf}.sorted.bam",
+		index		= "alignments/{sample_id}.{wf}.sorted.bam.bai"
 	params:
 		region_arg	= manta_region_arg
-	output:			f"manta/{SAMPLE_ID}.{{wf}}.{{vc_regions}}/runWorkflow.py"
-	shell:			f"configManta.py --runDir='manta/{SAMPLE_ID}.{{wildcards.wf}}.{{wildcards.vc_regions}}' --referenceFasta='{{input.reference}}' --bam={{input.alignments}} {{params.region_arg}}"
+	output:			"manta/{sample_id}.{wf}.{vc_regions}/runWorkflow.py"
+	shell:			"configManta.py --runDir='manta/{sample_id}.{wildcards.wf}.{wildcards.vc_regions}' --referenceFasta='{input.reference}' --bam={input.alignments} {params.region_arg}"
 
 
 rule manta_run:
 	conda:			"../workflow/environments/manta.yaml"
 	threads:		workflow.cores
-	input:			f"manta/{SAMPLE_ID}.{{wf}}.{{vc_regions}}/runWorkflow.py"
-	output:			f"manta/{SAMPLE_ID}.{{wf}}.{{vc_regions}}/results/variants/diploidSV.vcf.gz"
-	shell:			"{input} -j {threads} -g {MEM_GB}"
+	input:			"manta/{sample_id}.{wf}.{vc_regions}/runWorkflow.py"
+	output:			"manta/{sample_id}.{wf}.{vc_regions}/results/variants/diploidSV.vcf.gz"
+	shell:			f"{{input}} -j {{threads}} -g {MEM_GB}"
 
 
 rule gridss_subset_alignments:
 	conda:			"../workflow/environments/gridss.yaml"
 	threads:		workflow.cores
 	input:
-		alignments	= f"alignments/{SAMPLE_ID}.{{wf}}.sorted.bam",
+		alignments	= "alignments/{sample_id}.{wf}.sorted.bam",
 		regions		= "regions/chr{vc_regions}.bed"
-	output:			f"gridss/{SAMPLE_ID}.{{wf}}.subset.{{vc_regions}}.bam"
+	output:			"gridss/{sample_id}.{wf}.subset.{vc_regions}.bam"
 	shell:			"gridss_extract_overlapping_fragments --threads {threads} --targetbed {input.regions} --output {output} {input.alignments}"
 
 
 def gridss_alignment_input(wildcards):
 	if "all" == wildcards.vc_regions:
-		return f"alignments/{SAMPLE_ID}.{{wf}}.sorted.bam"
+		return "alignments/{sample_id}.{wf}.sorted.bam"
 	else:
-		return f"gridss/{SAMPLE_ID}.{{wf}}.subset.{{vc_regions}}.bam"
+		return "gridss/{sample_id}.{wf}.subset.{vc_regions}.bam"
 
 rule gridss_run:
 	conda:			"../workflow/environments/gridss.yaml"
@@ -206,21 +206,21 @@ rule gridss_run:
 		ref_bwt		= REFERENCE_BWT,
 		alignments	= gridss_alignment_input
 	output:			
-		variants	= f"gridss/{SAMPLE_ID}.{{wf}}.{{vc_regions}}.vcf.gz",
-		tempdir		= temp(directory(f"temp/gridss/{SAMPLE_ID}.{{wf}}.{{vc_regions}}"))
+		variants	= "gridss/{sample_id}.{wf}.{vc_regions}.vcf.gz",
+		tempdir		= temp(directory("temp/gridss/{sample_id}.{wf}.{vc_regions}"))
 	shell:			"mkdir -p {output.tempdir} && gridss --threads {threads} --workingdir {output.tempdir} --reference {input.reference} --output {output.variants} {input.alignments}"
 
 
 def truvari_input(suffix):
 	def helper(wildcards):
 		if "manta" == wildcards.variant_caller:
-			return f"{{variant_caller}}/{SAMPLE_ID}.{{wf}}.{{vc_regions}}/results/variants/diploidSV.normalised.vcf.gz{suffix}"
+			return f"{{variant_caller}}/{{sample_id}}.{{wf}}.{{vc_regions}}/results/variants/diploidSV.normalised.vcf.gz{suffix}"
 		else:
-			return f"{{variant_caller}}/{SAMPLE_ID}.{{wf}}.{{vc_regions}}.normalised.vcf.gz"
+			return "{variant_caller}/{sample_id}.{wf}.{vc_regions}.normalised.vcf.gz"
 	return helper
 
 def truvari_dir_name(wildcards):
-	return f"truvari/{SAMPLE_ID}.{wildcards.wf}.{wildcards.variant_caller}.{wildcards.vc_regions}.{wildcards.eval_regions}.{wildcards.filter}"
+	return "truvari/{sample_id}.{wildcards.wf}.{wildcards.variant_caller}.{wildcards.vc_regions}.{wildcards.eval_regions}.{wildcards.filter}"
 
 def truvari_filter_arg(wildcards):
 	return "--passonly" if "pass" == wildcards.filter else ""
@@ -228,11 +228,13 @@ def truvari_filter_arg(wildcards):
 rule truvari_run:
 	conda:			"../workflow/environments/truvari.yaml"
 	input:
+		truth		= TRUTH,
+		reference	= REFERENCE_GZ,
 		variants	= truvari_input(""),
 		index		= truvari_input(".tbi"),
 		regions		= "regions/{eval_regions}.bed"
-	output:			f"truvari/{SAMPLE_ID}.{{wf}}.{{variant_caller}}.{{vc_regions}}.{{eval_regions}}.{{filter}}/summary.json"
+	output:			"truvari/{sample_id}.{wf}.{variant_caller}.{vc_regions}.{eval_regions}.{filter}/summary.json"
 	params:
 		truvari_dir	= truvari_dir_name,
 		filter_arg	= truvari_filter_arg
-	shell:			f"rmdir {{params.truvari_dir}} && truvari bench -b {TRUTH} -c {{input.variants}} -o {{params.truvari_dir}} --reference {REFERENCE_GZ} --includebed {{input.regions}} --sizemin 0 --sizefilt 0 {{params.filter_arg}}"
+	shell:			"rmdir {params.truvari_dir} && truvari bench -b {input.truth} -c {input.variants} -o {params.truvari_dir} --reference {input.reference} --includebed {input.regions} --sizemin 0 --sizefilt 0 {params.filter_arg}"
