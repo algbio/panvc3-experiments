@@ -63,7 +63,8 @@ def none_if_empty(x):
 
 rule all:
 	input:
-		reference_bias	= expand("reference-bias/{sample_id}.{wf}.{chromosome}.{regions}.mc{mc}.txt", sample_id = SAMPLE_ID, wf = WORKFLOWS, chromosome = CHROMOSOMES, regions = ["all", "confident"], mc = [1, 5, 10, 15, 20, 25])
+		reference_bias			= expand("reference-bias/{sample_id}.{wf}.{chromosome}.{regions}.mc{mc}.txt", sample_id = SAMPLE_ID, wf = WORKFLOWS, chromosome = CHROMOSOMES, regions = ["all", "confident"], mc = [1, 5, 10, 15, 20, 25]),
+		precision_and_recall	= expand("alignment-precision-recall/{sample_id}.{wf}.d{dist}.tsv", sample_id = SAMPLE_ID, wf = WORKFLOWS, dist = [0, 5, 10, 20, 30])
 
 
 rule alignments:
@@ -190,6 +191,15 @@ rule concatenate_reads:
 	shell:			"cat {input.reads_1} {input.reads_2} > {output}"
 
 
+rule merge_aligned:
+	message:		"Merging generated alignments"
+	conda:			"../workflow/environments/samtools.yaml"
+	threads:		8
+	input:			expand("reads/{sample_id}.{chromosome}.s{chr_copy}.sorted.bam", sample_id = SAMPLE_ID, chromosome = CHROMOSOMES, chr_copy = [1, 2])
+	output:			f"reads/{SAMPLE_ID}.sorted.bam"
+	shell:			"samtools merge -@ {threads} -O BAM -o {output} {input}"
+
+
 rule count_supporting_reads:
 	message:			"Counting supporting reads"
 	conda:				none_if_empty(config.get('panvc3_conda_environment_path'))
@@ -210,3 +220,13 @@ rule calculate_reference_bias:
 	input:				f"supporting-reads-counts/{SAMPLE_ID}.{{wf}}.{{chromosome}}.{{regions}}.txt.gz"
 	output:				f"reference-bias/{SAMPLE_ID}.{{wf}}.{{chromosome}}.{{regions}}.mc{{mc}}.txt"
 	shell:				"gunzip -c -k {input} | python3 panvc3_calculate_reference_bias.py --min-coverage {wildcards.mc} > {output}"
+
+
+rule calculate_precision_recall:
+	message:			"Calculating alignment precision and recall"
+	conda:				"../workflow/environments/biopython.yaml"
+	input:
+		truth			= f"reads/{SAMPLE_ID}.sorted.bam",
+		tested			= f"alignments/{SAMPLE_ID}.{{wf}}.bam"
+	output:				f"alignment-precision-recall/{SAMPLE_ID}.{{wf}}.d{{dist}}.tsv"
+	shell:				"python3 ../workflow/scripts/alignment_position_precision_recall.py --distance-threshold {{wildcards.dist}} {{input.truth}} {{input.tested}}"
