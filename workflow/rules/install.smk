@@ -28,6 +28,16 @@ rule bwa:
 	shell:		"echo 'Installed dependencies in bwa.yaml'"
 
 
+rule gatk:
+	conda:		"../environments/gatk.yaml"
+	shell:		"echo 'Installed dependencies in gatk.yaml'"
+
+
+rule graphtyper2:
+	conda:		"../environments/graphtyper2.yaml"
+	shell:		"echo 'Installed dependencies in graphtyper2.yaml'"
+
+
 rule gridss:
 	conda:		"../environments/gridss.yaml"
 	shell:		"echo 'Installed dependencies in gridss.yaml'"
