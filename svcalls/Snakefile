@@ -170,7 +170,7 @@ rule manta_config:
 	params:
 		region_arg	= manta_region_arg
 	output:			"manta/{sample_id}.{wf}.{vc_regions}/runWorkflow.py"
-	shell:			"configManta.py --runDir='manta/{sample_id}.{wildcards.wf}.{wildcards.vc_regions}' --referenceFasta='{input.reference}' --bam={input.alignments} {params.region_arg}"
+	shell:			"configManta.py --runDir='manta/{wildcards.sample_id}.{wildcards.wf}.{wildcards.vc_regions}' --referenceFasta='{input.reference}' --bam={input.alignments} {params.region_arg}"
 
 
 rule manta_run:
