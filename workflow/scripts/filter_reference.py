@@ -1,7 +1,6 @@
 # Copyright (c) 2023 Tuukka Norri
 # This code is licensed under MIT license (see LICENSE for details).
 
-
 from Bio import SeqIO, SeqRecord
 import argparse
 import sys

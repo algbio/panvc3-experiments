@@ -37,7 +37,7 @@ rule index_giraffe:
 	output:				
 		index			= "index/vg-giraffe/index.giraffe.gbz",
 		dist			= "index/vg-giraffe/index.dist",
-		min			= "index/vg-giraffe/index.min",
+		min				= "index/vg-giraffe/index.min",
 		temp_dir		= temp(directory("temp/vg"))
 	benchmark:	 		"benchmark/vg_index_giraffe"
 	shell:
