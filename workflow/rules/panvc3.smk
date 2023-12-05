@@ -96,7 +96,7 @@ rule index_msa:
 	shell:
 		"panvc3_index_msa"
 		" --build-index"
-		" --sequence-inputs={input}"
+		" --sequences={input}"
 		" --msa-index-output={output.index}"
 		" --output-fasta"
 		" --pipe-input='gzip -d -c' > {output.unaligned_fasta}"
