@@ -207,7 +207,7 @@ rule count_supporting_reads:
 	conda:				none_if_empty(config.get('panvc3_conda_environment_path'))
 	threads:			4
 	input:				
-		alignments		= "alignments/{sample_id}.{wf}.bam",
+		alignments		= "alignments/{sample_id}.{wf}.sorted.bam",
 		variants		= "input/tested-variants.{chromosome}.vcf"
 	output:				"supporting-reads-counts/{sample_id}.{wf}.{chromosome}.{regions}.txt.gz"
 	params:
