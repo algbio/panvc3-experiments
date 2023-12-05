@@ -54,7 +54,7 @@ rule map:
 	output:			f"alignments/{config['alignment_id']}.vg-map.bam"
 	benchmark:		f"benchmark/vg_map.{config['alignment_id']}"
 	shell:
-		"vg map --threads {threads} --fastq {input.reads_1} --fastq {input.reads_2} --base-name vg/map/index --surject-to bam > {output}"
+		"vg map --threads {threads} --fastq {input.reads_1} --fastq {input.reads_2} --base-name index/vg-map/index --surject-to bam > {output}"
 	
 
 rule map_giraffe:
