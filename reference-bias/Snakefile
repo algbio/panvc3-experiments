@@ -61,6 +61,10 @@ def none_if_empty(x):
 	return x if bool(x) else None
 
 
+wildcard_constraints:
+	sample_id	= r"[^.]+"
+
+
 rule all:
 	input:
 		reference_bias			= expand("reference-bias/{sample_id}.{wf}.{chromosome}.{regions}.mc{mc}.txt", sample_id = SAMPLE_ID, wf = WORKFLOWS, chromosome = CHROMOSOMES, regions = ["all", "confident"], mc = [1, 5, 10, 15, 20, 25]),
@@ -138,21 +142,21 @@ rule generate_predicted_sequences:
 		reference	= REFERENCE_FA,
 		variants	= "input/tested-variants.{chromosome}.vcf"
 	output:
-		haplotype_1	= f"input/{{chromosome}}.{SAMPLE_ID}.1.fa",
-		haplotype_2	= f"input/{{chromosome}}.{SAMPLE_ID}.2.fa",
-		overlaps	= f"input/overlaps.{{chromosome}}.tsv"
-	shell:			f"cd input && vcf2multialign"
-					f" --haplotypes"
-					f" --input-reference=../{{input.reference}}"
-					f" --reference-sequence={{wildcards.chromosome}}"
-					f" --input-variants=../{{input.variants}}"
-					f" --chromosome={{wildcards.chromosome}}"
-					f" --dst-chromosome={{wildcards.chromosome}}"
-					f" --output-sequences-separate"
-					f" --separate-output-format=A2M"
-					f" --output-overlaps=overlaps.{{wildcards.chromosome}}.tsv"
-					f" --omit-reference"
-					f" --unaligned"
+		haplotype_1	= "input/{chromosome}.{sample_id}.1.fa",
+		haplotype_2	= "input/{chromosome}.{sample_id}.2.fa",
+		overlaps	= "input/overlaps.{chromosome}.{sample_id}.tsv"
+	shell:			"cd input && vcf2multialign"
+					" --haplotypes"
+					" --input-reference=../{input.reference}"
+					" --reference-sequence={wildcards.chromosome}"
+					" --input-variants=../{input.variants}"
+					" --chromosome={wildcards.chromosome}"
+					" --dst-chromosome={wildcards.chromosome}"
+					" --output-sequences-separate"
+					" --separate-output-format=A2M"
+					" --output-overlaps=overlaps.{wildcards.chromosome}.tsv"
+					" --omit-reference"
+					" --unaligned"
 
 
 rule generate_reads:
@@ -160,12 +164,12 @@ rule generate_reads:
 	conda:			"../workflow/environments/mason.yaml"
 	threads:		workflow.cores
 	input:
-		reference	= f"input/{{chromosome}}.{SAMPLE_ID}.{{chr_copy}}.fa"
+		reference	= "input/{chromosome}.{sample_id}.{chr_copy}.fa"
 	output:
-		temp_dir	= temp(directory(f"temp/mason/temp.{SAMPLE_ID}.{{chromosome}}.s{{chr_copy}}")),
-		alignments	= f"reads/{SAMPLE_ID}.{{chromosome}}.s{{chr_copy}}.bam",
-		reads_1		= f"reads/{SAMPLE_ID}.{{chromosome}}.s{{chr_copy}}.p1.fq.gz",
-		reads_2		= f"reads/{SAMPLE_ID}.{{chromosome}}.s{{chr_copy}}.p2.fq.gz"
+		temp_dir	= temp(directory("temp/mason/temp.{sample_id}.{chromosome}.s{chr_copy}")),
+		alignments	= "reads/{sample_id}.{chromosome}.s{chr_copy}.bam",
+		reads_1		= "reads/{sample_id}.{chromosome}.s{chr_copy}.p1.fq.gz",
+		reads_2		= "reads/{sample_id}.{chromosome}.s{chr_copy}.p2.fq.gz"
 	params:
 		chr_idx		= lambda wildcards: ALL_CHROMOSOMES.index(wildcards.chromosome)
 	shell:			"mkdir -p {output.temp_dir} && TMPDIR={output.temp_dir} mason_simulator"
@@ -184,10 +188,8 @@ rule generate_reads:
 
 rule concatenate_reads:
 	message:		"Concatenating reads"
-	input:
-		reads_1		= expand(f"reads/{SAMPLE_ID}.{{chromosome}}.s1.p{{{{pair}}}}.fq.gz", chromosome = CHROMOSOMES),
-		reads_2		= expand(f"reads/{SAMPLE_ID}.{{chromosome}}.s2.p{{{{pair}}}}.fq.gz", chromosome = CHROMOSOMES)
-	output:			f"reads/{SAMPLE_ID}.p{{pair}}.fq.gz"
+	input:			expand("reads/{{sample_id}}.{chromosome}.s{chr_copy}.p{{pair}}.fq.gz", chromosome = CHROMOSOMES, chr_copy = [1, 2])
+	output:			"reads/{sample_id}.p{pair}.fq.gz"
 	shell:			"cat {input.reads_1} {input.reads_2} > {output}"
 
 
@@ -195,8 +197,8 @@ rule merge_aligned:
 	message:		"Merging generated alignments"
 	conda:			"../workflow/environments/samtools.yaml"
 	threads:		8
-	input:			expand("reads/{sample_id}.{chromosome}.s{chr_copy}.sorted.bam", sample_id = SAMPLE_ID, chromosome = CHROMOSOMES, chr_copy = [1, 2])
-	output:			f"reads/{SAMPLE_ID}.sorted.bam"
+	input:			expand("reads/{{sample_id}}.{chromosome}.s{chr_copy}.sorted.bam", chromosome = CHROMOSOMES, chr_copy = [1, 2])
+	output:			"reads/{sample_id}.sorted.bam"
 	shell:			"samtools merge -@ {threads} -O BAM -o {output} {input}"
 
 
@@ -205,9 +207,9 @@ rule count_supporting_reads:
 	conda:				none_if_empty(config.get('panvc3_conda_environment_path'))
 	threads:			4
 	input:				
-		alignments		= f"alignments/{SAMPLE_ID}.{{wf}}.bam",
+		alignments		= "alignments/{sample_id}.{wf}.bam",
 		variants		= "input/tested-variants.{chromosome}.vcf"
-	output:				f"supporting-reads-counts/{SAMPLE_ID}.{{wf}}.{{chromosome}}.{{regions}}.txt.gz"
+	output:				"supporting-reads-counts/{sample_id}.{wf}.{chromosome}.{regions}.txt.gz"
 	params:
 		regions_param	= lambda wildcards: f"--regions={CONFIDENT_REGIONS}" if "confident" == wildcards.regions else ""
 	shell:				"samtools view -@ 2 {input.alignments} | panvc3_count_supporting_reads --vcf={input.variants} --chr={wildcards.chromosome} --contig={wildcards.chromosome} {params.regions_param} | gzip > {output}"
@@ -217,8 +219,8 @@ rule calculate_reference_bias:
 	message:			"Calculating reference bias"
 	conda:				none_if_empty(config.get('panvc3_conda_environment_path'))
 	threads:			2
-	input:				f"supporting-reads-counts/{SAMPLE_ID}.{{wf}}.{{chromosome}}.{{regions}}.txt.gz"
-	output:				f"reference-bias/{SAMPLE_ID}.{{wf}}.{{chromosome}}.{{regions}}.mc{{mc}}.txt"
+	input:				"supporting-reads-counts/{sample_id}.{wf}.{chromosome}.{regions}.txt.gz"
+	output:				"reference-bias/{sample_id}.{wf}.{chromosome}.{regions}.mc{mc}.txt"
 	shell:				"gunzip -c -k {input} | python3 panvc3_calculate_reference_bias.py --min-coverage {wildcards.mc} > {output}"
 
 
@@ -226,7 +228,7 @@ rule calculate_precision_recall:
 	message:			"Calculating alignment precision and recall"
 	conda:				"../workflow/environments/biopython.yaml"
 	input:
-		truth			= f"reads/{SAMPLE_ID}.sorted.bam",
-		tested			= f"alignments/{SAMPLE_ID}.{{wf}}.bam"
-	output:				f"alignment-precision-recall/{SAMPLE_ID}.{{wf}}.d{{dist}}.tsv"
-	shell:				"python3 ../workflow/scripts/alignment_position_precision_recall.py --distance-threshold {{wildcards.dist}} {{input.truth}} {{input.tested}}"
+		truth			= "reads/{sample_id}.sorted.bam",
+		tested			= "alignments/{sample_id}.{wf}.bam"
+	output:				"alignment-precision-recall/{sample_id}.{wf}.d{dist}.tsv"
+	shell:				"python3 ../workflow/scripts/alignment_position_precision_recall.py --distance-threshold {wildcards.dist} {input.truth} {input.tested}"
