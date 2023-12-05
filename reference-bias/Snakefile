@@ -61,6 +61,11 @@ def none_if_empty(x):
 	return x if bool(x) else None
 
 
+rule all:
+	input:
+		reference_bias	= expand("reference-bias/{sample_id}.{wf}.{chromosome}.{regions}.mc{mc}.txt", sample_id = SAMPLE_ID, wf = WORKFLOWS, chromosome = CHROMOSOMES, regions = ["all", "confident"], mc = [1, 5, 10, 15, 20, 25])
+
+
 rule alignments:
 	input:	expand("alignments/{sample_id}.{wf}.bam", sample_id = SAMPLE_ID, wf = WORKFLOWS)
 
@@ -188,6 +193,7 @@ rule concatenate_reads:
 rule count_supporting_reads:
 	message:			"Counting supporting reads"
 	conda:				none_if_empty(config.get('panvc3_conda_environment_path'))
+	threads:			4
 	input:				
 		alignments		= f"alignments/{SAMPLE_ID}.{{wf}}.bam",
 		variants		= "input/tested-variants.{chromosome}.vcf"
@@ -195,3 +201,12 @@ rule count_supporting_reads:
 	params:
 		regions_param	= lambda wildcards: f"--regions={CONFIDENT_REGIONS}" if "confident" == wildcards.regions else ""
 	shell:				"samtools view -@ 2 {input.alignments} | panvc3_count_supporting_reads --vcf={input.variants} --chr={wildcards.chromosome} --contig={wildcards.chromosome} {params.regions_param} | gzip > {output}"
+
+
+rule calculate_reference_bias:
+	message:			"Calculating reference bias"
+	conda:				none_if_empty(config.get('panvc3_conda_environment_path'))
+	threads:			2
+	input:				f"supporting-reads-counts/{SAMPLE_ID}.{{wf}}.{{chromosome}}.{{regions}}.txt.gz"
+	output:				f"reference-bias/{SAMPLE_ID}.{{wf}}.{{chromosome}}.{{regions}}.mc{{mc}}.txt"
+	shell:				"gunzip -c -k {input} | python3 panvc3_calculate_reference_bias.py --min-coverage {wildcards.mc} > {output}"
