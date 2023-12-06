@@ -49,6 +49,26 @@ rule sort_sam_gz:
 	shell:		"../scripts/set-open-file-limit.sh samtools sort -@ {threads} -o {output} {input}"
 
 
+rule sort_by_qname_bam:
+	message:	"Sorting the alignments by QNAME"
+	conda:		"../environments/samtools.yaml"
+	threads:	16
+	benchmark:	f"benchmark/sort_by_qname_bam/{{alignments}}.benchmark"
+	input:		f"{{alignments}}.bam"
+	output:		f"{{alignments}}.qname-sorted.bam"
+	shell:		"../scripts/set-open-file-limit.sh samtools sort -n -@ {threads} -o {output} {input}"
+
+
+rule sort_by_qname_bam_:
+	message:	"Sorting the alignments by QNAME"
+	conda:		"../environments/samtools.yaml"
+	threads:	16
+	benchmark:	f"benchmark/sort_by_qname_bam_/{{alignments}}.benchmark"
+	input:		f"{{alignments}}.sorted.bam"
+	output:		f"{{alignments}}.qname-sorted.bam"
+	shell:		"../scripts/set-open-file-limit.sh samtools sort -n -@ {threads} -o {output} {input}"
+
+
 rule sort_by_qname_sam_gz:
 	message:	"Sorting the alignments by QNAME"
 	conda:		"../environments/samtools.yaml"
@@ -108,4 +128,4 @@ rule normalise_vcf_gz:
 	shell:		"bcftools norm -m - -O z -o {output} {input}"
 
 
-ruleorder: sort_bam > sort_sam_gz > sort_sam
+ruleorder: sort_bam > sort_sam_gz > sort_sam > sort_by_qname_bam > sort_by_qname_sam_gz > sort_by_qname_bam_
