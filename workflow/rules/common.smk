@@ -46,7 +46,7 @@ rule sort_sam_gz:
 	benchmark:	f"benchmark/sort_sam_gz/{{alignments}}.benchmark"
 	input:		f"{{alignments}}.sam.gz"
 	output:		f"{{alignments}}.sorted.bam"
-	shell:		"../scripts/set-open-file-limit.sh samtools sort -@ {threads} -o {output} {input}"
+	shell:		"../workflow/scripts/set-open-file-limit.sh samtools sort -@ {threads} -o {output} {input}"
 
 
 rule sort_by_qname_bam:
@@ -56,7 +56,7 @@ rule sort_by_qname_bam:
 	benchmark:	f"benchmark/sort_by_qname_bam/{{alignments}}.benchmark"
 	input:		f"{{alignments}}.bam"
 	output:		f"{{alignments}}.qname-sorted.bam"
-	shell:		"../scripts/set-open-file-limit.sh samtools sort -n -@ {threads} -o {output} {input}"
+	shell:		"../workflow/scripts/set-open-file-limit.sh samtools sort -n -@ {threads} -o {output} {input}"
 
 
 rule sort_by_qname_bam_:
@@ -66,7 +66,7 @@ rule sort_by_qname_bam_:
 	benchmark:	f"benchmark/sort_by_qname_bam_/{{alignments}}.benchmark"
 	input:		f"{{alignments}}.sorted.bam"
 	output:		f"{{alignments}}.qname-sorted.bam"
-	shell:		"../scripts/set-open-file-limit.sh samtools sort -n -@ {threads} -o {output} {input}"
+	shell:		"../workflow/scripts/set-open-file-limit.sh samtools sort -n -@ {threads} -o {output} {input}"
 
 
 rule sort_by_qname_sam_gz:
@@ -76,7 +76,7 @@ rule sort_by_qname_sam_gz:
 	benchmark:	f"benchmark/sort_by_qname_sam_gz/{{alignments}}.benchmark"
 	input:		f"{{alignments}}.sam.gz"
 	output:		f"{{alignments}}.qname-sorted.bam"
-	shell:		"../scripts/set-open-file-limit.sh samtools sort -n -@ {threads} -o {output} {input}"
+	shell:		"../workflow/scripts/set-open-file-limit.sh samtools sort -n -@ {threads} -o {output} {input}"
 
 
 rule index_bam:
