@@ -68,7 +68,12 @@ rule filter_reference:
 	params:
 		chromosome_args		= lambda _: " ".join(map(lambda x: f"-c {x}", config["chromosomes"]))
 	shell:
-		"python3 ../workflow/scripts/filter_reference.py -o {output.contig_list} {params.chromosome_args} < {input.reference} | gzip > {output.remaining_contigs}"
+		"python3 ../workflow/scripts/filter_reference.py"
+		" -o {output.contig_list}"
+		" -d REF"
+		" {params.chromosome_args}"
+		" < {input.reference}"
+		" | gzip > {output.remaining_contigs}"
 
 
 rule combine_indexing_input:
