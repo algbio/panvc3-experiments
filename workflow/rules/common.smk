@@ -12,6 +12,14 @@ rule bgzip:
 	shell:		"bgzip -k -@ {threads} {input}"
 
 
+rule bgzip_index:
+	conda:		"../environments/samtools.yaml"
+	benchmark:	f"benchmark/bgzip_index/{{file}}.benchmark"
+	input:		"{file}.gz"
+	output:		"{file}.gz.gzi"
+	shell:		"bgzip -r {input}"
+
+
 rule convert_sam_gz_to_bam:
 	conda:		"../environments/samtools.yaml"
 	threads:	16 # workflow.cores
