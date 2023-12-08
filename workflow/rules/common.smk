@@ -104,6 +104,14 @@ rule index_fasta_fai:
 	shell:		"samtools faidx {input}"
 
 
+rule index_fasta_gz_fai:
+	conda:		"../environments/samtools.yaml"
+	benchmark:	f"benchmark/index_fasta_gz_fai/{{reference}}.benchmark"
+	input:		"{reference}.fa.gz"
+	output:		"{reference}.fa.gz.fai"
+	shell:		"samtools faidx {input}"
+
+
 rule index_vcf_gz_csi:
 	conda:		"../environments/bcftools.yaml"
 	benchmark:	f"benchmark/index_vcf_gz_csi/{{variants}}.benchmark"
