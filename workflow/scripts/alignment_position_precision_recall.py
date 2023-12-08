@@ -147,7 +147,7 @@ def calculate_precision_and_recall(truth_path, tested_path, distance_threshold):
 		tested_ref_ids = {rname: idx for idx, rname in enumerate(tested.header.references)}
 
 		# Make equivalence classes by QNAME lazily.
-		do_map = lambda aln_file: map(lambda x: list(x[1]), itertools.groupby(aln_file.fetch(), lambda x: x.query_name))
+		do_map = lambda aln_file: map(lambda x: list(x[1]), itertools.groupby(iter(aln_file), lambda x: x.query_name))
 		truth_alns	= do_map(truth)
 		tested_alns	= do_map(tested)
 
