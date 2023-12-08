@@ -212,15 +212,15 @@ rule gridss_run:
 
 
 def truvari_input(suffix):
-	def helper(wildcards):
-		if "manta" == wildcards.variant_caller:
-			return f"{{variant_caller}}/{{sample_id}}.{{wf}}.{{vc_regions}}/results/variants/diploidSV.normalised.vcf.gz{suffix}"
+	def helper(ww):
+		if "manta" == ww.variant_caller:
+			return f"{ww.variant_caller}/{ww.sample_id}.{ww.wf}.{ww.vc_regions}/results/variants/diploidSV.normalised.vcf.gz{suffix}"
 		else:
-			return f"{variant_caller}/{sample_id}.{wf}.{vc_regions}.normalised.vcf.gz{suffix}"
+			return f"{ww.variant_caller}/{ww.sample_id}.{ww.wf}.{ww.vc_regions}.normalised.vcf.gz{suffix}"
 	return helper
 
-def truvari_dir_name(wildcards):
-	return "truvari/{sample_id}.{wildcards.wf}.{wildcards.variant_caller}.{wildcards.vc_regions}.{wildcards.eval_regions}.{wildcards.filter}"
+def truvari_dir_name(ww):
+	return f"truvari/{ww.sample_id}.{ww.wf}.{ww.variant_caller}.{ww.vc_regions}.{ww.eval_regions}.{ww.filter}"
 
 def truvari_filter_arg(wildcards):
 	return "--passonly" if "pass" == wildcards.filter else ""
