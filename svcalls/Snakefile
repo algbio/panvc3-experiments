@@ -216,7 +216,7 @@ def truvari_input(suffix):
 		if "manta" == wildcards.variant_caller:
 			return f"{{variant_caller}}/{{sample_id}}.{{wf}}.{{vc_regions}}/results/variants/diploidSV.normalised.vcf.gz{suffix}"
 		else:
-			return "{variant_caller}/{sample_id}.{wf}.{vc_regions}.normalised.vcf.gz"
+			return f"{variant_caller}/{sample_id}.{wf}.{vc_regions}.normalised.vcf.gz{suffix}"
 	return helper
 
 def truvari_dir_name(wildcards):
@@ -226,15 +226,16 @@ def truvari_filter_arg(wildcards):
 	return "--passonly" if "pass" == wildcards.filter else ""
 
 rule truvari_run:
-	conda:			"../workflow/environments/truvari.yaml"
+	conda:				"../workflow/environments/truvari.yaml"
 	input:
-		truth		= TRUTH,
-		reference	= REFERENCE_GZ,
-		variants	= truvari_input(""),
-		index		= truvari_input(".tbi"),
-		regions		= "regions/{eval_regions}.bed"
-	output:			"truvari/{sample_id}.{wf}.{variant_caller}.{vc_regions}.{eval_regions}.{filter}/summary.json"
+		truth			= TRUTH,
+		truth_index		= f"{TRUTH}.tbi",
+		reference		= REFERENCE_GZ,
+		variants		= truvari_input(""),
+		variants_index	= truvari_input(".tbi"),
+		regions			= "regions/{eval_regions}.bed"
+	output:				"truvari/{sample_id}.{wf}.{variant_caller}.{vc_regions}.{eval_regions}.{filter}/summary.json"
 	params:
-		truvari_dir	= truvari_dir_name,
-		filter_arg	= truvari_filter_arg
-	shell:			"truvari bench -b {input.truth} -c {input.variants} -o {params.truvari_dir} --reference {input.reference} --includebed {input.regions} --sizemin 0 --sizefilt 0 {params.filter_arg}"
+		truvari_dir		= truvari_dir_name,
+		filter_arg		= truvari_filter_arg
+	shell:				"truvari bench -b {input.truth} -c {input.variants} -o {params.truvari_dir} --reference {input.reference} --includebed {input.regions} --sizemin 0 --sizefilt 0 {params.filter_arg}"
