@@ -138,7 +138,9 @@ rule project_alignments:
 	benchmark:	f"benchmark/panvc3/project_alignments.{config['alignment_id']}.{{aligner}}.f{{founder_count}}.d{{minimum_distance}}"
 	threads:	workflow.cores
 	input:		
-				reference			= config["reference"],
+				reference			= f"{config['reference']}.gz",
+				reference_fai		= f"{config['reference']}.gz.fai",
+				reference_gzi		= f"{config['reference']}.gz.gzi",
 				msa_index			= f"panvc3/msa-index/msa-index.f{{founder_count}}.d{{minimum_distance}}.dat",
 				seq_output_order	= f"panvc3/founder-sequences/contig-list.txt", # FIXME: Use .fai for this.
 				alignments			= f"alignments/{config['alignment_id']}.panvc3-{{aligner}}-f{{founder_count}}-d{{minimum_distance}}.sorted.bam"
