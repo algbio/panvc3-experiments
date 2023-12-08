@@ -127,6 +127,14 @@ def alignment_position(aln):
 	return retval
 
 
+def missing_from_truth(aln):
+	print(f"WARNING: Read {aln.query_name} is missing from the truth.", file = sys.stderr)
+
+
+def missing_from_tested(aln):
+	print(f"WARNING: Read {aln.query_name} is missing from the tested set.", file = sys.stderr)
+
+
 """
 Calculate the precision and the recall of the given alignments.
 
