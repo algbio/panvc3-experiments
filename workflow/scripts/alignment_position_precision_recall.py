@@ -56,7 +56,7 @@ def open_mode(path):
 
 "Check that the given alignment file is sorted by QNAME."
 def check_sort_order(alignment_file, path):
-	header = alignment_file.header().to_dict()
+	header = alignment_file.header.to_dict()
 	hd = header.get('HD')
 	if hd is None:
 		print(f"ERROR: no @HD header in {path}.", file = sys.stderr)
