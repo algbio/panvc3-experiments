@@ -238,4 +238,4 @@ rule truvari_run:
 	params:
 		truvari_dir		= truvari_dir_name,
 		filter_arg		= truvari_filter_arg
-	shell:				"truvari bench -b {input.truth} -c {input.variants} -o {params.truvari_dir} --reference {input.reference} --includebed {input.regions} --sizemin 0 --sizefilt 0 {params.filter_arg}"
+	shell:				"rmdir {params.truvari_dir} && truvari bench -b {input.truth} -c {input.variants} -o {params.truvari_dir} --reference {input.reference} --includebed {input.regions} --sizemin 0 --sizefilt 0 {params.filter_arg}"
