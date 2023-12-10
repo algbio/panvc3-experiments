@@ -3,6 +3,7 @@
 
 import argparse
 import itertools
+import math
 import pysam
 import sys
 
@@ -135,6 +136,12 @@ def missing_from_tested(aln):
 	print(f"WARNING: Read {aln.query_name} is missing from the tested set.", file = sys.stderr)
 
 
+def fp_div(numerator, denominator):
+	if 0 == denominator:
+		return math.nan
+	return numerator / denominator
+
+
 """
 Calculate the precision and the recall of the given alignments.
 
@@ -227,9 +234,9 @@ def calculate_precision_and_recall(truth_path, tested_path, distance_threshold):
 					# No true positives found; classify as false negative and also count the wrong alignments as false positives.
 					false_negatives += 1
 	
-	precision = float(true_positives) / (true_positives + false_positives)
-	recall = float(true_positives) / (true_positives + false_negatives)
-	f1_score = 2.0 * true_positives / (2.0 * true_positives + false_positives + false_negatives)
+	precision = fp_div(float(true_positives), true_positives + false_positives)
+	recall = fp_div(float(true_positives), true_positives + false_negatives)
+	f1_score = fp_div(2.0 * true_positives, 2.0 * true_positives + false_positives + false_negatives)
 	return total_reads, total_alns, precision, recall, f1_score
 
 
