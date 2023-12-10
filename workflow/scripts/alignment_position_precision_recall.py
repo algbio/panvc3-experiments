@@ -142,12 +142,34 @@ def fp_div(numerator, denominator):
 	return numerator / denominator
 
 
+def ref_name_mappings(path):
+	if path is None:
+		return {}
+	
+	def helper():
+		with open(path, "r") as fp:
+			for line in fp:
+				if line.startswith("#"):
+					continue
+				line = line.rstrip("\n")
+				fields = line.split("\t")
+				yield fields[0], fields[1]
+	return {k: v for k, v in helper()}
+
+
 """
 Calculate the precision and the recall of the given alignments.
 
 We mostly follow the method in Robert Lindner, Caroline C. Friedel. A Comprehensive Evaluation of Alignment Algorithms in the Context of RNA-Seq.
 """
-def calculate_precision_and_recall(truth_path, tested_path, distance_threshold):
+def calculate_precision_and_recall(
+	truth_path,
+	tested_path,
+	distance_threshold,
+	truth_rname_mapping_path
+):
+	truth_rname_mappings = ref_name_mappings(truth_rname_mapping_path)
+
 	total_reads = 0
 	total_alns = 0
 	true_positives = 0
@@ -193,10 +215,12 @@ def calculate_precision_and_recall(truth_path, tested_path, distance_threshold):
 					print(f"WARNING: Truth unmapped for read {qname} segment {seg_idx}.", file = sys.stderr)
 					continue
 
-				expected_ref_id = tested_ref_ids.get(true.reference_name)
+				rname = true.reference_name
+				rname = truth_rname_mappings.get(rname, rname)
+				expected_ref_id = tested_ref_ids.get(rname)
 				if expected_ref_id is None:
 					if true.reference_name not in seen_non_matching_reference_names:
-						print(f"WARNING: Reference name {true.reference_name} not found in tested set. (Further warnings will be suppressed.)", file = sys.stderr)
+						print(f"WARNING: Reference name {rname} not found in tested set. (Further warnings will be suppressed.)", file = sys.stderr)
 						seen_non_matching_reference_names.add(true.reference_name)
 
 					continue
@@ -246,8 +270,9 @@ if __name__ == "__main__":
 	parser.add_argument('truth', type = str, help = "True alignments as SAM or BAM, sorted by QNAME")
 	parser.add_argument('tested', type = str, help = "Tested alignments as SAM or BAM, sorted by QNAME")
 	parser.add_argument('-o', '--omit-header', action = "store_true", help = "Omit header from output")
+	parser.add_argument('--truth-rname-mapping', type = str, metavar = "PATH", help = "Map RNAMEs in truth as specified in the given TSV file")
 	args = parser.parse_args()
-	total_reads, total_alns, precision, recall, f1_score = calculate_precision_and_recall(args.truth, args.tested, args.distance_threshold)
+	total_reads, total_alns, precision, recall, f1_score = calculate_precision_and_recall(args.truth, args.tested, args.distance_threshold, args.truth_rname_mapping)
 	if not args.omit_header:
 		print("TOTAL_READS\tTOTAL_ALIGNMENTS\tPRECISION\tRECALL\tF1_SCORE")
 	print(f"{total_reads}\t{total_alignments}\t{precision}\t{recall}\t{f1_score}")
