@@ -160,6 +160,7 @@ def calculate_precision_and_recall(truth_path, tested_path, distance_threshold):
 		tested_alns	= do_map(tested)
 
 		# Classify.
+		seen_non_matching_reference_names = set()
 		for truth_eqc, tested_eqc in merge(truth_alns, tested_alns, lambda lhs, rhs: cmp_str(lhs[0].query_name, rhs[0].query_name), missing_from_truth, missing_from_tested):
 			qname = truth_eqc[0].query_name
 			true_1, true_2, true_other = partition_by_aligned_segment(truth_eqc)
@@ -187,7 +188,10 @@ def calculate_precision_and_recall(truth_path, tested_path, distance_threshold):
 
 				expected_ref_id = tested_ref_ids.get(true.reference_name)
 				if expected_ref_id is None:
-					print(f"WARNING: Reference name {true.reference_name} not found in tested set.", file = sys.stderr)
+					if true.reference_name not in seen_non_matching_reference_names:
+						print(f"WARNING: Reference name {true.reference_name} not found in tested set. (Further warnings will be suppressed.)", file = sys.stderr)
+						seen_non_matching_reference_names.add(true.reference_name)
+
 					continue
 
 				total_reads += 1
