@@ -221,7 +221,7 @@ rule calculate_reference_bias:
 	threads:			2
 	input:				"supporting-reads-counts/{sample_id}.{wf}.{chromosome}.{regions}.txt.gz"
 	output:				"reference-bias/{sample_id}.{wf}.{chromosome}.{regions}.mc{mc}.txt"
-	shell:				"gunzip -c -k {input} | python3 panvc3_calculate_reference_bias.py --min-coverage {wildcards.mc} > {output}"
+	shell:				"gunzip -c -k {input} | panvc3_calculate_reference_bias.py --min-coverage {wildcards.mc} > {output}"
 
 
 rule calculate_precision_recall:
