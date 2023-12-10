@@ -238,7 +238,7 @@ def calculate_precision_and_recall(
 						continue
 
 					# Compare the positions.
-					if true.reference_id != tested.reference_id:
+					if true.reference_id != tested_aln.reference_id:
 						false_positives += 1
 						continue
 
