@@ -212,7 +212,7 @@ rule count_supporting_reads:
 	output:				"supporting-reads-counts/{sample_id}.{wf}.{chromosome}.{regions}.txt.gz"
 	params:
 		regions_param	= lambda wildcards: f"--regions={CONFIDENT_REGIONS}" if "confident" == wildcards.regions else ""
-	shell:				"samtools view -@ 2 {input.alignments} | panvc3_count_supporting_reads --vcf={input.variants} --chr={wildcards.chromosome} --contig={wildcards.chromosome} {params.regions_param} | gzip > {output}"
+	shell:				"set +o pipefail && samtools view -@ 2 {input.alignments} | panvc3_count_supporting_reads --vcf={input.variants} --chr={wildcards.chromosome} --contig={wildcards.chromosome} {params.regions_param} | gzip -c --verbose > {output}"
 
 
 rule calculate_reference_bias:
