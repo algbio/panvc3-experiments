@@ -228,7 +228,13 @@ rule calculate_precision_recall:
 	message:			"Calculating alignment precision and recall"
 	conda:				"../workflow/environments/biopython.yaml"
 	input:
+		rname_mapping	= "reads/reference-mapping.tsv",
 		truth			= "reads/{sample_id}.qname-sorted.bam",
 		tested			= "alignments/{sample_id}.{wf}.qname-sorted.bam"
 	output:				"alignment-precision-recall/{sample_id}.{wf}.d{dist}.tsv"
-	shell:				"python3 ../workflow/scripts/alignment_position_precision_recall.py --distance-threshold {wildcards.dist} {input.truth} {input.tested}"
+	shell:				"python3"
+						" ../workflow/scripts/alignment_position_precision_recall.py"
+						" --distance-threshold {wildcards.dist}"
+						" --truth-rname-mapping {input.rname_mapping}"
+						" {input.truth}"
+						" {input.tested}"
