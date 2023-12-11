@@ -108,10 +108,34 @@ def check_true_alns(alns, qname, seg_idx):
 
 
 "Check that the count of the tested alignments is sensible."
-def check_tested_alns(alns, qname, seg_idx):
+def check_tested_alns(alns, qname, seg_idx, should_report_missing):
 	if 0 == len(alns):
-		print(f"WARNING: No alignments in tested for read {qname} segment {seg_idx}.", file = sys.stderr)
+		if should_report_missing:
+			print(f"WARNING: No alignments in tested for read {qname} segment {seg_idx}.", file = sys.stderr)
 		return False
+	return True
+
+
+def sanity_check_truth(qname, true_1, true_2, true_other):
+	if not check_true_alns(true_1, qname, 1):
+		return False
+	if not check_true_alns(true_2, qname, 2):
+		return False
+	if 0 != len(true_other):
+		print(f"WARNING: Additional aligned segments in truth for read {qname}.", file = sys.stderr)
+		return False
+	return True
+
+
+def sanity_check_tested(qname, tested_1, tested_2, tested_other, should_report_missing):
+	check = lambda tested, seg_idx: check_tested_alns(tested, qname, seg_idx, should_report_missing)
+	if not check(tested_1, 1):
+		return False
+	if not check(tested_2, 2):
+		return False
+	if 0 != len(tested_other):
+		print(f"WARNING: Additional aligned segments in test for read {qname}.", file = sys.stderr)
+		# Continue.
 	return True
 
 
@@ -130,10 +154,6 @@ def alignment_position(aln):
 
 def missing_from_truth(aln_group):
 	print(f"WARNING: Read {aln_group[0].query_name} is missing from the truth.", file = sys.stderr)
-
-
-def missing_from_tested(aln_group):
-	print(f"WARNING: Read {aln_group[0].query_name} is missing from the tested set.", file = sys.stderr)
 
 
 def fp_div(numerator, denominator):
@@ -166,7 +186,8 @@ def calculate_precision_and_recall(
 	truth_path,
 	tested_path,
 	distance_threshold,
-	truth_rname_mapping_path
+	truth_rname_mapping_path,
+	should_report_missing_in_tested
 ):
 	truth_rname_mappings = ref_name_mappings(truth_rname_mapping_path)
 
@@ -175,6 +196,19 @@ def calculate_precision_and_recall(
 	true_positives = 0
 	false_positives = 0
 	false_negatives = 0
+
+	def handle_missing_from_tested(truth_eqc):
+		qname = truth_eqc[0].query_name
+		true_1, true_2, true_other = partition_by_aligned_segment(truth_eqc)
+		# Sanity checks.
+		if not sanity_check_truth(qname, true_1, true_2, true_other):
+			return
+
+		# There should be one alignment in both true_1 and true_2.
+		nonlocal total_reads
+		nonlocal false_negatives
+		total_reads += 2
+		false_negatives += 2
 
 	with pysam.AlignmentFile(truth_path, open_mode(truth_path)) as truth, pysam.AlignmentFile(tested_path, open_mode(tested_path)) as tested:
 		check_sort_order(truth, truth_path)
@@ -190,25 +224,23 @@ def calculate_precision_and_recall(
 
 		# Classify.
 		seen_non_matching_reference_names = set()
-		for truth_eqc, tested_eqc in merge(truth_alns, tested_alns, lambda lhs, rhs: cmp_str(lhs[0].query_name, rhs[0].query_name), missing_from_truth, missing_from_tested):
+		merged = merge(
+			truth_alns,
+			tested_alns,
+			lambda lhs, rhs: cmp_str(lhs[0].query_name, rhs[0].query_name),
+			missing_from_truth,
+			handle_missing_from_tested
+		)
+		for truth_eqc, tested_eqc in merged:
 			qname = truth_eqc[0].query_name
 			true_1, true_2, true_other = partition_by_aligned_segment(truth_eqc)
 			tested_1, tested_2, tested_other = partition_by_aligned_segment(tested_eqc)
 
 			# Sanity checks.
-			if not check_true_alns(true_1, qname, 1):
+			if not sanity_check_truth(qname, true_1, true_2, true_other):
 				continue
-			if not check_true_alns(true_2, qname, 2):
+			if not sanity_check_tested(qname, tested_1, tested_2, tested_other, should_report_missing_in_tested):
 				continue
-			if not check_tested_alns(tested_1, qname, 1):
-				continue
-			if not check_tested_alns(tested_2, qname, 2):
-				continue
-			if 0 != len(true_other):
-				print(f"WARNING: Additional aligned segments in truth for read {qname}.", file = sys.stderr)
-				continue
-			if 0 != len(tested_other):
-				print(f"WARNING: Additional aligned segments in test for read {qname}.", file = sys.stderr)
 
 			for seg_idx, true, tested in [(1, true_1[0], tested_1), (2, true_2[0], tested_2)]:
 				if not true.is_mapped:
@@ -271,8 +303,9 @@ if __name__ == "__main__":
 	parser.add_argument('tested', type = str, help = "Tested alignments as SAM or BAM, sorted by QNAME")
 	parser.add_argument('-o', '--omit-header', action = "store_true", help = "Omit header from output")
 	parser.add_argument('--truth-rname-mapping', type = str, metavar = "PATH", help = "Map RNAMEs in truth as specified in the given TSV file")
+	parser.add_argument('--report-missing-in-tested', action = 'store_true', help = "Report alignments missing from tested to stderr.")
 	args = parser.parse_args()
-	total_reads, total_alns, precision, recall, f1_score = calculate_precision_and_recall(args.truth, args.tested, args.distance_threshold, args.truth_rname_mapping)
+	total_reads, total_alns, precision, recall, f1_score = calculate_precision_and_recall(args.truth, args.tested, args.distance_threshold, args.truth_rname_mapping, args.report_missing_in_tested)
 	if not args.omit_header:
 		print("TOTAL_READS\tTOTAL_ALIGNMENTS\tPRECISION\tRECALL\tF1_SCORE")
 	print(f"{total_reads}\t{total_alignments}\t{precision}\t{recall}\t{f1_score}")
