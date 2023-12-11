@@ -2,4 +2,4 @@
 
 set -euxo pipefail
 
-snakemake --printshellcmds --use-conda --conda-prefix ../conda-env --cores 32 -- all
+snakemake --printshellcmds --use-conda --conda-prefix ../conda-env --cores 32 --dry-run -- all
