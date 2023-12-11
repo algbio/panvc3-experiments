@@ -75,6 +75,10 @@ rule alignments:
 	input:	expand("alignments/{sample_id}.{wf}.bam", sample_id = SAMPLE_ID, wf = WORKFLOWS)
 
 
+rule precision_recall_alignments:
+	input:	expand("alignments/{sample_id}.{wf}.qname-sorted.bam", sample_id = SAMPLE_ID, wf = WORKFLOWS)
+
+
 rule supporting_read_counts:
 	input:	expand("supporting-reads-counts/{sample_id}.{wf}.{chromosome}.{regions}.txt.gz", sample_id = SAMPLE_ID, wf = WORKFLOWS, chromosome = CHROMOSOMES, regions = ["all", "confident"])
 
@@ -159,6 +163,46 @@ rule generate_predicted_sequences:
 					" --unaligned"
 
 
+rule generate_predicated_a2m:
+	message:        "Generating MSA of the predicted sequences"
+	conda:			none_if_empty(config.get('vcf2multialign_conda_environment_path'))
+	input:
+		reference	= REFERENCE_FA,
+		variants	= "input/tested-variants.{chromosome}.vcf"
+	output:
+		msa			= "msa-index/truth.{chromosome}.a2m.gz",
+		overlaps	= "msa-index/overlaps.{chromosome}.tsv"
+	shell:			"vcf2multialign"
+					" --haplotypes"
+					" --input-reference={input.reference}"
+					" --reference-sequence={wildcards.chromosome}"
+					" --input-variants={input.variants}"
+					" --chromosome={wildcards.chromosome}"
+					" --dst-chromosome={wildcards.chromosome}"
+					" --output-sequences-a2m={output.msa}"
+					" --output-overlaps={output.overlaps}"
+					" --pipe=../workflow/scripts/run-gzip.sh"
+
+
+rule combine_predicted_a2m:
+	message:		"Combining the MSAs of the predicted sequences"
+	input:			expand("msa-index/truth.{chromosome}.a2m.gz", chromosome = CHROMOSOMES)
+	output:			"msa-index/truth.a2m.gz"
+	shell:			"cat {input} > {output}"
+
+
+rule index_msa:
+	# FIXME: conda
+	message:		"Building the MSA index"
+	input:			"msa-index/truth.a2m.gz"
+	output:			"msa-index/truth.dat"
+	shell:			"panvc3_index_msa"
+					" --build-index"
+					" --sequences={input}"
+					" --msa-index-output={output}"
+					" --pipe-input='gzip -d -c'"
+
+
 rule generate_reads:
 	message:		"Generating reads"
 	conda:			"../workflow/environments/mason.yaml"
@@ -193,6 +237,7 @@ rule concatenate_reads:
 	shell:			"cat {input.reads_1} {input.reads_2} > {output}"
 
 
+# samtools cat requires identical headers while merge rewrites the records, so we use the latter.
 rule merge_aligned:
 	message:		"Merging generated alignments"
 	conda:			"../workflow/environments/samtools.yaml"
@@ -200,6 +245,35 @@ rule merge_aligned:
 	input:			expand("reads/{{sample_id}}.{chromosome}.s{chr_copy}.sorted.bam", chromosome = CHROMOSOMES, chr_copy = [1, 2])
 	output:			"reads/{sample_id}.sorted.bam"
 	shell:			"samtools merge -@ {threads} -O BAM -o {output} {input}"
+
+
+rule reheader_aligned:
+	message:		"Rewriting the header of the generated alignments"
+	conda:			"../workflow/environments/biopython.yaml"
+	input:			
+		alignments	= "reads/{sample_id}.sorted.bam",
+		rnames		= "reference-mapping-truth.tsv"
+	output:			"reads/{sample_id}.rh.sorted.bam"
+	shell:			"samtools reheader -c 'python3 ../workflow/scripts/replace_sam_rname_header.py {input.rnames}' {input.alignments} > {output}"
+
+
+rule project_truth:
+	# FIXME: conda
+	threads:		workflow.cores
+	input:			
+		alignments		= "reads/{sample_id}.rh.sorted.bam",
+		msa_index		= "msa-index/truth.dat",
+		reference		= f"{REFERENCE_FA}.gz",
+		reference_fai	= f"{REFERENCE_FA}.gz.fai",
+		reference_gzi	= f"{REFERENCE_FA}.gz.gzi"
+	output:			"reads/{sample_id}.projected.sam.gz"
+	shell:			"panvc3_project_alignments"
+					" --alignments={input.alignments}"
+					" --msa-index={input.msa_index}"
+					" --reference={input.reference}"
+					" --reference-msa-id=REF"
+					" --ref-id-separator=/"
+					" | gzip > {output}"
 
 
 rule count_supporting_reads:
@@ -228,13 +302,11 @@ rule calculate_precision_recall:
 	message:			"Calculating alignment precision and recall"
 	conda:				"../workflow/environments/biopython.yaml"
 	input:
-		rname_mapping	= "reads/reference-mapping.tsv",
-		truth			= "reads/{sample_id}.qname-sorted.bam",
+		truth			= "reads/{sample_id}.projected.qname-sorted.bam",
 		tested			= "alignments/{sample_id}.{wf}.qname-sorted.bam"
 	output:				"alignment-precision-recall/{sample_id}.{wf}.d{dist}.tsv"
 	shell:				"python3"
 						" ../workflow/scripts/alignment_position_precision_recall.py"
 						" --distance-threshold {wildcards.dist}"
-						" --truth-rname-mapping {input.rname_mapping}"
 						" {input.truth}"
 						" {input.tested}"
