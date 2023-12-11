@@ -310,3 +310,4 @@ rule calculate_precision_recall:
 						" --distance-threshold {wildcards.dist}"
 						" {input.truth}"
 						" {input.tested}"
+						" > {output}"
