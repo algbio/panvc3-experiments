@@ -308,4 +308,4 @@ if __name__ == "__main__":
 	total_reads, total_alns, precision, recall, f1_score = calculate_precision_and_recall(args.truth, args.tested, args.distance_threshold, args.truth_rname_mapping, args.report_missing_in_tested)
 	if not args.omit_header:
 		print("TOTAL_READS\tTOTAL_ALIGNMENTS\tPRECISION\tRECALL\tF1_SCORE")
-	print(f"{total_reads}\t{total_alignments}\t{precision}\t{recall}\t{f1_score}")
+	print(f"{total_reads}\t{total_alns}\t{precision}\t{recall}\t{f1_score}")
