@@ -7,7 +7,8 @@
 REFERENCE_FA					= "../reference/hs37d5.fa"
 TRUTH							= "../known-variants/HG002_SVs_Tier1_v0.6.normalised.vcf.gz"
 KNOWN_VARIANTS_PREFIX			= "../known-variants/ALL.chr"
-KNOWN_VARIANTS_SUFFIX			= ".phase3_shapeit2_mvncall_integrated_v5b.20130502.genotypes.vcf.gz"
+KNOWN_VARIANTS_SUFFIX_			= ".phase3_shapeit2_mvncall_integrated_v5b.20130502.genotypes.vcf"
+KNOWN_VARIANTS_SUFFIX			= f"{KNOWN_VARIANTS_SUFFIX_}.gz"
 SAMPLE_ID						= "NA24385"
 CHROMOSOMES						= ['1']
 READS_1							= "../reads/HG002_HiSeq30x_subsampled_R1.fastq.gz",
@@ -22,22 +23,22 @@ MEM_GB							= 168
 
 # Remember to check the founder counts from vcf2multialign's output with each given distance.
 WORKFLOWS = [
-	#("panvc3-bowtie2-f14-d25.mapq-recalculated",	"manta"),
-	#("panvc3-bowtie2-f14-d25.mapq-recalculated",	"gridss"),
-	#("panvc3-bowtie2-f14-d25.max-mapq",				"manta"),
-	#("panvc3-bowtie2-f14-d25.max-mapq",				"gridss"),
-	#("panvc3-bowtie2-f25-d50.mapq-recalculated",	"manta"),
-	#("panvc3-bowtie2-f25-d50.mapq-recalculated",	"gridss"),
-	#("panvc3-bowtie2-f25-d50.max-mapq",				"manta"),
-	#("panvc3-bowtie2-f25-d50.max-mapq",				"gridss"),
+	("panvc3-bowtie2-f14-d25.mapq-recalculated",	"manta"),
+	("panvc3-bowtie2-f14-d25.mapq-recalculated",	"gridss"),
+	("panvc3-bowtie2-f14-d25.max-mapq",				"manta"),
+	("panvc3-bowtie2-f14-d25.max-mapq",				"gridss"),
+	("panvc3-bowtie2-f25-d50.mapq-recalculated",	"manta"),
+	("panvc3-bowtie2-f25-d50.mapq-recalculated",	"gridss"),
+	("panvc3-bowtie2-f25-d50.max-mapq",				"manta"),
+	("panvc3-bowtie2-f25-d50.max-mapq",				"gridss"),
 	("bowtie2",										"manta"),
-	#("bowtie2",										"gridss"),
+	("bowtie2",										"gridss"),
 	("vg-giraffe",									"manta"),
-	#("vg-giraffe",									"gridss"),
+	("vg-giraffe",									"gridss"),
 	("vg-map",										"manta"),
-	#("vg-map",										"gridss"),
-	#("reference-flow",								"manta"),
-	#("reference-flow",								"gridss")
+	("vg-map",										"gridss"),
+	("reference-flow",								"manta"),
+	("reference-flow",								"gridss")
 ]
 
 BOWTIE2_CONFIG = {
@@ -52,7 +53,7 @@ PANVC3_CONFIG = {
 	"reference":								REFERENCE_FA,
 	"chromosomes":								CHROMOSOMES,
 	"known_variants_prefix":					KNOWN_VARIANTS_PREFIX,
-	"known_variants_suffix":					KNOWN_VARIANTS_SUFFIX,
+	"known_variants_suffix":					KNOWN_VARIANTS_SUFFIX_,
 	"reads_1":									READS_1,
 	"reads_2":									READS_2,
 	"panvc3_conda_environment_path":			None,
@@ -89,6 +90,10 @@ rule summarise:
 	input:		expand("truvari/{sample_id}.{wf[0]}.{wf[1]}.{vc_regions}.{eval_regions}.{filter}/summary.json", sample_id = SAMPLE_ID, wf = WORKFLOWS, vc_regions = ["all", "1"], eval_regions = ["chr1", "chr1_selected"], filter = ["all", "pass"])
 	output:		"summary.tsv"
 	shell:		"python3 summarise.py > {output}"
+
+
+rule alignments:
+	input:		expand("alignments/{sample_id}.{wf[0]}.sorted.bam", sample_id = SAMPLE_ID, wf = WORKFLOWS)
 
 
 rule bwa_index:	# Needed by gridss
