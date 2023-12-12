@@ -67,20 +67,34 @@ wildcard_constraints:
 
 rule all:
 	input:
-		reference_bias			= expand("reference-bias/{sample_id}.{wf}.{chromosome}.{regions}.mc{mc}.txt", sample_id = SAMPLE_ID, wf = WORKFLOWS, chromosome = CHROMOSOMES, regions = ["all", "confident"], mc = [1, 5, 10, 15, 20, 25]),
-		precision_and_recall	= expand("alignment-precision-recall/{sample_id}.{wf}.d{dist}.tsv", sample_id = SAMPLE_ID, wf = WORKFLOWS, dist = [0, 5, 10, 20, 30])
+		reference_bias			= "reference-bias-summary.tsv",
+		precision_and_recall	= "alignment-precision-recall-summary.tsv"
 
 
 rule alignments:
 	input:	expand("alignments/{sample_id}.{wf}.bam", sample_id = SAMPLE_ID, wf = WORKFLOWS)
 
 
-rule precision_recall_alignments:
+rule alignment_precision_recall:
 	input:	expand("alignments/{sample_id}.{wf}.qname-sorted.bam", sample_id = SAMPLE_ID, wf = WORKFLOWS)
 
 
 rule supporting_read_counts:
 	input:	expand("supporting-reads-counts/{sample_id}.{wf}.{chromosome}.{regions}.txt.gz", sample_id = SAMPLE_ID, wf = WORKFLOWS, chromosome = CHROMOSOMES, regions = ["all", "confident"])
+
+
+rule alignment_precision_recall_summary:
+	conda:	"../workflow/environments/biopython.yaml"
+	input:	expand("alignment-precision-recall/{sample_id}.{wf}.d{dist}.tsv", sample_id = SAMPLE_ID, wf = WORKFLOWS, dist = [0, 5, 10, 20, 30])
+	output:	"alignment-precision-recall-summary.tsv"
+	shell:	"python3 scripts/summarise_alignment_precision_recall.py > {output}"
+
+
+rule reference_bias_summary:
+	conda:	"../workflow/environments/biopython.yaml"
+	input:	expand("reference-bias/{sample_id}.{wf}.{chromosome}.{regions}.mc{mc}.txt", sample_id = SAMPLE_ID, wf = WORKFLOWS, chromosome = CHROMOSOMES, regions = ["all", "confident"], mc = [1, 5, 10, 15, 20, 25]),
+	output:	"reference-bias-summary.tsv"
+	shell:	"python3 scripts/summarise_reference_bias.py > {output}"
 
 
 module common_rules:
