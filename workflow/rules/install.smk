@@ -40,7 +40,12 @@ rule graphtyper2:
 
 rule gridss:
 	conda:		"../environments/gridss.yaml"
-	shell:		"echo 'Installed dependencies in gridss.yaml'"
+	shell:		"echo 'installed dependencies in gridss.yaml'"
+
+
+rule happy:
+	conda:		"../environments/happy.yaml"
+	shell:		"echo 'installed dependencies in happy.yaml'"
 
 
 rule manta:
