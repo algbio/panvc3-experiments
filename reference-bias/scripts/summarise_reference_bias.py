@@ -5,6 +5,7 @@
 
 # Summarise reference bias, output as TSV.
 
+import gzip
 import os
 import re
 import sys
@@ -12,7 +13,7 @@ import sys
 
 # E.g. HG001.panvc3-bowtie2-f14-d25.mapq-recalculated.1.all.mc10.txt
 file_name_pattern = re.compile(
-	r"^ (?: .* [/])? (?P<sample> [^.]+) [.] (?P<wf> .+) [.] (?P<chromosome> \d+) [.] (?P<regions> [^.]+) [.] mc (?P<min_cov> \d+) [.]txt $",
+	r"^ (?: .* [/])? (?P<sample> [^.]+) [.] (?P<wf> .+) [.] (?P<chromosome> \d+) [.] (?P<regions> [^.]+) [.] mc (?P<min_cov> \d+) [.]txt[.]gz $",
 	re.VERBOSE
 )
 
@@ -30,7 +31,7 @@ if __name__ == "__main__":
 		regions = mm.group("regions")
 		min_cov = int(mm.group("min_cov"))
 
-		with open(ds.path) as ff:
+		with gzip.open(ds.path, "rt") as ff:
 			is_first = True
 			for line in ff:
 				if is_first:
