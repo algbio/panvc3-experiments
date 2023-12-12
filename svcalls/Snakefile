@@ -87,6 +87,7 @@ rule all:
 
 
 rule summarise:
+	conda:		"../workflow/environments/biopython.yaml"
 	input:		expand("truvari/{sample_id}.{wf[0]}.{wf[1]}.{vc_regions}.{eval_regions}.{filter}/summary.json", sample_id = SAMPLE_ID, wf = WORKFLOWS, vc_regions = ["all", "1"], eval_regions = ["chr1", "chr1_selected"], filter = ["all", "pass"])
 	output:		"summary.tsv"
 	shell:		"python3 summarise.py > {output}"
