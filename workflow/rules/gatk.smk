@@ -108,7 +108,7 @@ rule merge_aligned_unaligned:
 						" --TMP_DIR {output.tempdir}"
 						" --ATTRIBUTES_TO_RETAIN X0"
 						" --ALIGNED_BAM {input.aligned}"
-						" --UNALIGNED_BAM {input.unaligned}"
+						" --UNMAPPED_BAM {input.unaligned}"
 						" --OUTPUT {output.alignments}"
 						" --REFERENCE_SEQUENCE {input.reference}"
 						" --PAIRED_RUN true"
