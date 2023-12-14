@@ -19,16 +19,47 @@ READS_1							= "../reads/ERR194147_1.fastq.gz"
 READS_2							= "../reads/ERR194147_2.fastq.gz"
 SAMPLING_PROBABILITY			= "0.5"
 
+PANVC2_FOUNDER_COUNT			= 2
+PANVC2_BWA_THREADS				= 40
+
 WORKFLOWS = [
-	("bowtie2",										"gatk"),
-	("bowtie2",										"graphtyper2"),
-	("vg-map",										"gatk"),
-	("vg-giraffe",									"gatk"),
-	("panvc3-bowtie2-f14-d25.mapq-recalculated",	"gatk"),
-	("panvc3-bowtie2-f14-d25.max-mapq",				"gatk"),
-	("panvc3-bowtie2-f25-d50.mapq-recalculated",	"gatk"),
-	("panvc3-bowtie2-f25-d50.max-mapq",				"gatk")
+	("bowtie2",										"gatk",			"chr1"),
+	("bowtie2",										"gatk",			"chr1_selected"),
+	("bowtie2",										"graphtyper2",	"chr1"),
+	("bowtie2",										"graphtyper2",	"chr1_selected"),
+	("vg-map",										"gatk",			"chr1"),
+	("vg-map",										"gatk",			"chr1_selected"),
+	("vg-giraffe",									"gatk",			"chr1"),
+	("vg-giraffe",									"gatk",			"chr1_selected"),
+	("panvc3-bowtie2-f2-d2.mapq-recalculated",		"gatk",			"chr1"),
+	("panvc3-bowtie2-f2-d2.mapq-recalculated",		"gatk",			"chr1_selected"),
+	("panvc3-bowtie2-f7-d10.mapq-recalculated",		"gatk",			"chr1"),
+	("panvc3-bowtie2-f7-d10.mapq-recalculated",		"gatk",			"chr1_selected"),
+	("panvc3-bowtie2-f14-d25.mapq-recalculated",	"gatk",			"chr1"),
+	("panvc3-bowtie2-f14-d25.mapq-recalculated",	"gatk",			"chr1_selected"),
+	("panvc3-bowtie2-f25-d50.mapq-recalculated",	"gatk",			"chr1"),
+	("panvc3-bowtie2-f25-d50.mapq-recalculated",	"gatk",			"chr1_selected"),
+	("panvc3-bowtie2-f2-d2.max-mapq",				"gatk",			"chr1"),
+	("panvc3-bowtie2-f2-d2.max-mapq",				"gatk",			"chr1_selected"),
+	("panvc3-bowtie2-f7-d10.max-mapq",				"gatk",			"chr1"),
+	("panvc3-bowtie2-f7-d10.max-mapq",				"gatk",			"chr1_selected"),
+	("panvc3-bowtie2-f14-d25.max-mapq",				"gatk",			"chr1"),
+	("panvc3-bowtie2-f14-d25.max-mapq",				"gatk",			"chr1_selected"),
+	("panvc3-bowtie2-f25-d50.max-mapq",				"gatk",			"chr1"),
+	("panvc3-bowtie2-f25-d50.max-mapq",				"gatk",			"chr1_selected"),
+	("panvc2",										"gatk",			"1")
 ]
+
+
+def list_reference_contigs():
+	def helper():
+		with open(f"{REFERENCE_FA}.gz.fai", "r") as fp:
+			for line in fp:
+				line = line.rstrip("\n")
+				fields = line.split("\t")
+				yield fields[0]
+	return [x for x in helper()]
+
 
 BOWTIE2_CONFIG = {
 	"alignment_id":								SAMPLE_ID,
@@ -47,6 +78,40 @@ PANVC3_CONFIG = {
 	"reads_2":									READS_2,
 	"panvc3_conda_environment_path":			None,
 	"vcf2multialign_conda_environment_path":	None
+}
+
+PANVC2_INDEX_CONFIG = {
+	"benchmark_dir":							"benchmark/panvc2/index",
+	"index_root":								"index/panvc2",
+	"input_a2m":								[(x, f"panvc2/a2m/{x}.a2m") for x in list_reference_contigs()],
+	"max_edit_distance":						10,
+	"max_memory_MB":							1024 * MEM_GB,
+	"max_read_length":							105,
+	"n_refs":									1 + PANVC2_FOUNDER_COUNT,
+	"tempdir":									"temp/panvc2/index"
+}
+
+PANVC2_CONFIG = {
+	"benchmark_dir":							"benchmark/panvc2/index",
+	"index_root":								"index/panvc2",
+	"chromosome_list":							[x for x in list_reference_contigs()],
+	"max_edit_distance":						10,
+	"max_memory_MB":							1024 * MEM_GB,
+	"max_read_len":								105,
+	"n_refs":									1 + PANVC2_FOUNDER_COUNT,
+	"output_root":								f"panvc2/call/{SAMPLE_ID}",
+	"ploidy":									2,
+	"ploidy_file":								"GRCh37",
+	"reads_file_1":								READS_1,
+	"reads_file_2":								READS_2,
+	"reads_all_path":							"panvc2/reads/all.fastq.gz",
+	"sensibility":								5,
+	"tempdir":									"temp/panvc2/call",
+	"variant_caller":							["gatk"],
+	"workflow":									["pg"],
+	"call_regions":								CHROMOSOMES,
+	"bwa_threads":								PANVC2_BWA_THREADS,
+	"panvc2_subdir":							"lib/panvc2"
 }
 
 VG_CONFIG = {
@@ -78,7 +143,7 @@ GATK_CONFIG = {
 
 
 rule all:
-	input:	expand("hap.py/{sample_id}.{wf[0]}.{wf[1]}.{vc_regions}.{eval_regions}.summary.csv", sample_id = SAMPLE_ID, wf = WORKFLOWS, vc_regions = ['chr1', 'chr1_selected'], eval_regions = ['chr1', 'chr1_selected'])
+	input:	expand("hap.py/{sample_id}.{wf[0]}.{wf[1]}.{wf[2]}.{eval_regions}.summary.csv", sample_id = SAMPLE_ID, wf = WORKFLOWS, eval_regions = ['chr1', 'chr1_selected'])
 
 
 rule reads:
@@ -132,6 +197,20 @@ module panvc3_workflow:
 use rule * from panvc3_workflow as panvc3_*
 
 
+module panvc2_indexing_workflow:
+	snakefile:	"lib/panvc2/Snakefile.index"
+	config:		PANVC2_INDEX_CONFIG
+
+use rule * from panvc2_indexing_workflow as panvc2_index_*
+
+
+module panvc2_workflow:
+	snakefile:	"lib/panvc2/Snakefile.call"
+	config:		PANVC2_CONFIG
+
+use rule * from panvc2_workflow as panvc2_call_*
+
+
 module vg_workflow:
 	snakefile:	"../workflow/rules/vg.smk"
 	config:		VG_CONFIG
@@ -163,6 +242,12 @@ rule remove_sample_from_known_variants:
 	shell:				"bcftools view -s {params.removed_samples} -O v -o {output} {input}"
 
 
+rule move_panvc2_output:
+	input:				"panvc2/call/{sample_id}/ext_vc/variants.gatk.vcf",
+	output:				"variants/{sample_id}.panvc2.gatk.1.vcf"
+	shell:				"mkdir -p variants && mv {input} {output}" 
+
+
 rule run_hap_py:
 	conda:				"../workflow/environments/happy.yaml"
 	threads:			2
@@ -181,3 +266,8 @@ rule run_hap_py:
 						" -o hap.py/{wildcards.sample_id}.{wildcards.wf}.{wildcards.variant_caller}.{wildcards.vc_regions}.{wildcards.eval_regions}"
 						" {input.truth_vcf}"
 						" {input.query_vcf}"
+
+
+ruleorder: common_index_bam > panvc2_call_index_alignments
+ruleorder: panvc2_call_gatk_index_ref > gatk_index_ref
+ruleorder: panvc2_call_samtools_index_ref > common_index_fasta_fai
