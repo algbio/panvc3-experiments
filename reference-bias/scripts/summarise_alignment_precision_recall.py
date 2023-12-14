@@ -34,5 +34,7 @@ if __name__ == "__main__":
 				if is_first:
 					is_first = False
 					continue
+				if line.startswith("#"):
+					continue
 				sys.stdout.write(f"{sample}\t{wf}\t{dist}\t")
 				sys.stdout.write(line)

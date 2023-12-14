@@ -67,7 +67,7 @@ wildcard_constraints:
 
 rule all:
 	input:
-		reference_bias			= "reference-bias-summary.tsv",
+		reference_bias			= "reference-bias-summary.tsv.gz",
 		precision_and_recall	= "alignment-precision-recall-summary.tsv"
 
 
@@ -91,10 +91,11 @@ rule alignment_precision_recall_summary:
 
 
 rule reference_bias_summary:
-	conda:	"../workflow/environments/biopython.yaml"
-	input:	expand("reference-bias/{sample_id}.{wf}.{chromosome}.{regions}.mc{mc}.txt", sample_id = SAMPLE_ID, wf = WORKFLOWS, chromosome = CHROMOSOMES, regions = ["all", "confident"], mc = [1, 5, 10, 15, 20, 25]),
-	output:	"reference-bias-summary.tsv"
-	shell:	"python3 scripts/summarise_reference_bias.py > {output}"
+	conda:		"../workflow/environments/biopython.yaml"
+	threads:	2
+	input:		expand("reference-bias/{sample_id}.{wf}.{chromosome}.{regions}.mc{mc}.txt.gz", sample_id = SAMPLE_ID, wf = WORKFLOWS, chromosome = CHROMOSOMES, regions = ["all", "confident"], mc = [1, 5, 10, 15, 20, 25]),
+	output:		"reference-bias-summary.tsv.gz"
+	shell:		"python3 scripts/summarise_reference_bias.py | gzip > {output}"
 
 
 module common_rules:
@@ -306,10 +307,10 @@ rule count_supporting_reads:
 rule calculate_reference_bias:
 	message:			"Calculating reference bias"
 	conda:				none_if_empty(config.get('panvc3_conda_environment_path'))
-	threads:			2
+	threads:			3
 	input:				"supporting-reads-counts/{sample_id}.{wf}.{chromosome}.{regions}.txt.gz"
-	output:				"reference-bias/{sample_id}.{wf}.{chromosome}.{regions}.mc{mc}.txt"
-	shell:				"gunzip -c -k {input} | panvc3_calculate_reference_bias.py --min-coverage {wildcards.mc} > {output}"
+	output:				"reference-bias/{sample_id}.{wf}.{chromosome}.{regions}.mc{mc}.txt.gz"
+	shell:				"gunzip -c -k {input} | panvc3_calculate_reference_bias.py --min-coverage {wildcards.mc} | gzip > {output}"
 
 
 rule calculate_precision_recall:
