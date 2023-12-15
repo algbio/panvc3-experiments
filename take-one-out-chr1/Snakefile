@@ -286,8 +286,8 @@ rule indexes:
 		rules.panvc2_index_pg_index.output,
 		rules.vg_index.output,
 		rules.vg_index_giraffe.output,
-		expand(rules.panvc3_index_bowtie2.output, founder_count = panvc3_founder_counts(), minimum_distance = panvc3_minimum_distances()),
-		expand(rules.panvc3_index_msa.output.index, founder_count = panvc3_founder_counts(), minimum_distance = panvc3_minimum_distances())
+		expand(rules.panvc3_index_bowtie2.output, zip, founder_count = panvc3_founder_counts(), minimum_distance = panvc3_minimum_distances()),
+		expand(rules.panvc3_index_msa.output.index, zip, founder_count = panvc3_founder_counts(), minimum_distance = panvc3_minimum_distances())
 
 
 rule remove_sample_from_known_variants:
