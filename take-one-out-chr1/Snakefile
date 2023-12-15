@@ -3,6 +3,9 @@
 
 # vim: syntax=snakefile
 
+import re
+
+
 REFERENCE_FA					= "../reference/hs37d5.fa"
 TRUTH							= "../known-variants/HG001_GRCh37_1_22_v4.2.1_benchmark.vcf"
 KNOWN_VARIANTS_PREFIX			= "../known-variants/ALL.chr"
@@ -145,6 +148,10 @@ GATK_CONFIG = {
 }
 
 
+wildcard_constraints:
+	chromosome_	= "|".join(map(lambda x: f"({re.escape(x)})", CHROMOSOMES))
+
+
 rule all:
 	input:	expand("hap.py/{sample_id}.{wf[0]}.{wf[1]}.{wf[2]}.{eval_regions}.summary.csv", sample_id = SAMPLE_ID, wf = WORKFLOWS, eval_regions = ['chr1', 'chr1_selected'])
 
@@ -153,6 +160,10 @@ rule reads:
 	input:
 		reads_1	= "reads/ERR194147_1.sample0.5.fastq.gz",
 		reads_2	= "reads/ERR194147_2.sample0.5.fastq.gz"
+
+
+rule panvc2_indexing_input:
+	input:	expand("panvc2/a2m/{chromosome}.a2m", chromosome = reference_contigs())
 
 
 rule alignments:
@@ -246,8 +257,8 @@ rule remove_sample_from_known_variants:
 
 
 rule prepare_panvc2_input_founders:
-	input:				"panvc3/founder-sequences/chromosome.{chromosome}.f2.d2.a2m.gz"
-	output:				"panvc2/a2m/{chromosome}.a2m"
+	input:				"panvc3/founder-sequences/chromosome.{chromosome_}.f2.d2.a2m.gz"
+	output:				"panvc2/a2m/{chromosome_}.a2m"
 	shell:				"gunzip -c -k {input} | sed -E 's/^[>][^\t]+\t(.*)$/>\1/' > {output}"
 
 
@@ -257,7 +268,7 @@ rule prepare_panvc2_input_rest:
 		founder_count	= 1 + PANVC2_FOUNDER_COUNT,
 	input:				"panvc3/founder-sequences/remaining-contigs.fa.gz"
 	output:				expand("panvc2/a2m/{chromosome}.a2m", chromosome = non_founder_sequence_contigs())
-	shell:				"gunzip -c -k {input} | python3 ../workflow/scripts/prepare_panvc2_input_rest.py {params.founder_count} panvc2/a2m/ > {output}"
+	shell:				"gunzip -c -k {input} | python3 ../workflow/scripts/prepare_panvc2_input_rest.py {params.founder_count} panvc2/a2m/"
 
 
 rule move_panvc2_output:
