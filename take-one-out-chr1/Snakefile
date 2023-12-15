@@ -67,6 +67,40 @@ def non_founder_sequence_contigs():
 	return filter(lambda x: x not in founder_sequence_contigs, reference_contigs())
 
 
+panvc3_parameter_pattern = re.compile(
+	r"^panvc3-.*- f(?P<founders> \d+) - d(?P<distance> \d+) [.] .*$",
+	re.VERBOSE
+)
+
+def panvc3_parameters():
+	def helper():
+		for wf in WORKFLOWS:
+			mm = panvc3_parameter_pattern.match(wf[0])
+			if mm is not None:
+				yield (mm.group("founders"), mm.group("distance"))
+	
+	def helper_2(items):
+		is_first = True
+		prev_item = None
+		for item in items:
+			if is_first:
+				is_first = False
+				prev_item = item
+				yield item
+				continue
+			if prev_item != item:
+				prev_item = item
+				yield item
+	
+	return helper_2(sorted(helper()))
+
+def panvc3_founder_counts():
+	return map(lambda x: x[0], panvc3_parameters())
+
+def panvc3_minimum_distances():
+	return map(lambda x: x[1], panvc3_parameters())
+
+
 BOWTIE2_CONFIG = {
 	"alignment_id":								SAMPLE_ID,
 	"reference":								REFERENCE_FA,
@@ -244,6 +278,16 @@ module gatk_workflow:
 	config:		GATK_CONFIG
 
 use rule * from gatk_workflow as gatk_*
+
+
+rule indexes:
+	input:
+		rules.bowtie2_index.output,
+		rules.panvc2_index_pg_index.output,
+		rules.vg_index.output,
+		rules.vg_index_giraffe.output,
+		expand(rules.panvc3_index_bowtie2.output, founder_count = panvc3_founder_counts(), minimum_distance = panvc3_minimum_distances()),
+		expand(rules.panvc3_index_msa.output.index, founder_count = panvc3_founder_counts(), minimum_distance = panvc3_minimum_distances())
 
 
 rule remove_sample_from_known_variants:
