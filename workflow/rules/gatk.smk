@@ -91,11 +91,34 @@ rule fastq_to_unaligned_bam:
 						" --USE_JDK_INFLATER true"
 
 
+rule fix_sq_order:
+	message:			"Fixing @SQ header order"
+	conda:				"../environments/biopython.yaml"
+	benchmark:			"benchmark/gatk_fix_sq_order/{alignments}"
+	threads:			8
+	input:				"alignments/{alignments}.bam"
+	output:				"alignments/{alignments}.sq-order-fixed.bam"
+	shell:				"cat"
+						"  <(samtools view -H alignments/{wildcards.alignments}.bam"
+						f"   | python3 ../workflow/scripts/reoder_sequence_dictionary.py {config['reference']}.gz.fai)"
+						"  <(samtools view -@ 4 alignments/{wildcards.alignments}.bam)"
+						" | samtools view -@ 4 -b > {output}"
+
+
+def merge_aligned_unaligned_input(wildcards):
+	bam_file_name = wildcards.alignments
+	tail = bam_file_name[(1 + bam_file_name.index(".")):]
+	if tail.startswith("vg-"):
+		return f"alignments/{wildcards.alignments}.sq-order-fixed.bam"
+	else:
+		return f"alignments/{wildcards.alignments}.bam"
+	
+
 rule merge_aligned_unaligned:
 	message:			"Merging aligned and unaligned reads"
 	conda:				"../environments/gatk.yaml"
 	input:
-		aligned			= "alignments/{alignments}.bam",
+		aligned			= merge_aligned_unaligned_input,
 		unaligned		= f"gatk/{config['alignment_id']}.unaligned.bam",
 		reference		= config['reference']
 	output:
