@@ -15,8 +15,8 @@ rule call:
 	conda:				"../environments/graphtyper2.yaml"
 	threads:			workflow.cores
 	input:
-		alignments		= f"alignments/{config['alignment_id']}.{{wf}}.bam",
-		alignment_index	= f"alignments/{config['alignment_id']}.{{wf}}.bam.bai",
+		alignments		= f"alignments/{config['alignment_id']}.{{wf}}.sorted.bam",
+		alignment_index	= f"alignments/{config['alignment_id']}.{{wf}}.sorted.bam.bai",
 		reference		= config['reference'],
 		known_variants	= config['known_variants'],
 		regions			= "regions/{regions}.bed"
