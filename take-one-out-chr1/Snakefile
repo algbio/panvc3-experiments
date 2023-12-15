@@ -51,14 +51,17 @@ WORKFLOWS = [
 ]
 
 
-def list_reference_contigs():
-	def helper():
-		with open(f"{REFERENCE_FA}.gz.fai", "r") as fp:
-			for line in fp:
-				line = line.rstrip("\n")
-				fields = line.split("\t")
-				yield fields[0]
-	return [x for x in helper()]
+def reference_contigs():
+	with open(f"{REFERENCE_FA}.gz.fai", "r") as fp:
+		for line in fp:
+			line = line.rstrip("\n")
+			fields = line.split("\t")
+			yield fields[0]
+
+
+def non_founder_sequence_contigs():
+	founder_sequence_contigs = frozenset(CHROMOSOMES)
+	return filter(lambda x: x not in founder_sequence_contigs, reference_contigs())
 
 
 BOWTIE2_CONFIG = {
@@ -83,7 +86,7 @@ PANVC3_CONFIG = {
 PANVC2_INDEX_CONFIG = {
 	"benchmark_dir":							"benchmark/panvc2/index",
 	"index_root":								"index/panvc2",
-	"input_a2m":								[(x, f"panvc2/a2m/{x}.a2m") for x in list_reference_contigs()],
+	"input_a2m":								[(x, f"panvc2/a2m/{x}.a2m") for x in reference_contigs()],
 	"max_edit_distance":						10,
 	"max_memory_MB":							1024 * MEM_GB,
 	"max_read_length":							105,
@@ -94,7 +97,7 @@ PANVC2_INDEX_CONFIG = {
 PANVC2_CONFIG = {
 	"benchmark_dir":							"benchmark/panvc2/index",
 	"index_root":								"index/panvc2",
-	"chromosome_list":							[x for x in list_reference_contigs()],
+	"chromosome_list":							list(reference_contigs()),
 	"max_edit_distance":						10,
 	"max_memory_MB":							1024 * MEM_GB,
 	"max_read_len":								105,
@@ -242,6 +245,21 @@ rule remove_sample_from_known_variants:
 	shell:				"bcftools view -s {params.removed_samples} -O v -o {output} {input}"
 
 
+rule prepare_panvc2_input_founders:
+	input:				"panvc3/founder-sequences/chromosome.{chromosome}.f2.d2.a2m.gz"
+	output:				"panvc2/a2m/{chromosome}.a2m"
+	shell:				"gunzip -c -k {input} | sed -E 's/^[>][^\t]+\t(.*)$/>\1/' > {output}"
+
+
+rule prepare_panvc2_input_rest:
+	conda:				"../workflow/environments/biopython.yaml"
+	params:
+		founder_count	= 1 + PANVC2_FOUNDER_COUNT,
+	input:				"panvc3/founder-sequences/remaining-contigs.fa.gz"
+	output:				expand("panvc2/a2m/{chromosome}.a2m", chromosome = non_founder_sequence_contigs())
+	shell:				"gunzip -c -k {input} | python3 ../workflow/scripts/prepare_panvc2_input_rest.py {params.founder_count} panvc2/a2m/ > {output}"
+
+
 rule move_panvc2_output:
 	input:				"panvc2/call/{sample_id}/ext_vc/variants.gatk.vcf",
 	output:				"variants/{sample_id}.panvc2.gatk.1.vcf"
@@ -271,3 +289,4 @@ rule run_hap_py:
 ruleorder: common_index_bam > panvc2_call_index_alignments
 ruleorder: panvc2_call_gatk_index_ref > gatk_index_ref
 ruleorder: panvc2_call_samtools_index_ref > common_index_fasta_fai
+ruleorder: prepare_panvc2_input_founders > prepare_panvc2_input_rest
