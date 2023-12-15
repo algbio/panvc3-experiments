@@ -265,7 +265,7 @@ rule prepare_panvc2_input_founders:
 rule prepare_panvc2_input_rest:
 	conda:				"../workflow/environments/biopython.yaml"
 	params:
-		founder_count	= 1 + PANVC2_FOUNDER_COUNT,
+		founder_count	= PANVC2_FOUNDER_COUNT,
 	input:				"panvc3/founder-sequences/remaining-contigs.fa.gz"
 	output:				expand("panvc2/a2m/{chromosome}.a2m", chromosome = non_founder_sequence_contigs())
 	shell:				"gunzip -c -k {input} | python3 ../workflow/scripts/prepare_panvc2_input_rest.py {params.founder_count} panvc2/a2m/"
