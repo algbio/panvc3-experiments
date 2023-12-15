@@ -35,7 +35,7 @@ if __name__ == "__main__":
 	args = parser.parse_args()
 
 	for contig_name, sequence_lines in parse_input(sys.stdin):
-		with open(f"{args.output_prefix}{contig_name}", "x") as fp:
+		with open(f"{args.output_prefix}{contig_name}.a2m", "x") as fp:
 			fp.write(">REF\n")
 			for line in sequence_lines:
 				fp.write(line)
