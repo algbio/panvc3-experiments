@@ -176,7 +176,7 @@ rule set_nm_uq:
 	message:			"Setting the NM and UQ tags"
 	conda:				"../environments/gatk.yaml"
 	input:
-		alignments		= "{alignments}.deduplicated.bam",
+		alignments		= "{alignments}.deduplicated.sorted.bam",
 		reference		= config['reference']
 	output:
 		alignments		= "{alignments}.nm-uq-set.bam",
