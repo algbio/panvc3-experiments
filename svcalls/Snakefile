@@ -187,11 +187,33 @@ rule manta_run:
 	shell:			f"{{input}} -j {{threads}} -g {MEM_GB}"
 
 
+# From GATK workflow
+rule fix_sq_order:
+	message:            "Fixing @SQ header order"
+	conda:              "../workflow/environments/biopython.yaml"
+	benchmark:          "benchmark/fix_sq_order/{alignments}"
+	threads:            8
+	input:              "alignments/{alignments}.bam"
+	output:             "alignments/{alignments}.sq-order-fixed.bam"
+	shell:              "cat"
+						"  <(samtools view -H alignments/{wildcards.alignments}.bam"
+						f"   | python3 ../workflow/scripts/reoder_sequence_dictionary.py {REFERENCE_FA}.gz.fai)"
+						"  <(samtools view -@ 4 alignments/{wildcards.alignments}.bam)"
+						" | samtools view -@ 4 -b > {output}"
+
+
+def gridss_subset_alignments_input(wildcards):
+	wf = wildcards.wf
+	if wf.startswith("vg-"):
+		return f"alignments/{wildcards.sample_id}.{wildcards.wf}.sq-order-fixed.sorted.bam"
+	else:
+		return f"alignments/{wildcards.sample_id}.{wildcards.wf}.sorted.bam"
+
 rule gridss_subset_alignments:
 	conda:			"../workflow/environments/gridss.yaml"
 	threads:		workflow.cores
 	input:
-		alignments	= "alignments/{sample_id}.{wf}.sorted.bam",
+		alignments	= gridss_subset_alignments_input,
 		regions		= "regions/chr{vc_regions}.bed"
 	output:			"gridss/{sample_id}.{wf}.subset.{vc_regions}.bam"
 	shell:			"gridss_extract_overlapping_fragments --threads {threads} --targetbed {input.regions} --output {output} {input.alignments}"
@@ -199,9 +221,12 @@ rule gridss_subset_alignments:
 
 def gridss_alignment_input(wildcards):
 	if "all" == wildcards.vc_regions:
-		return "alignments/{sample_id}.{wf}.sorted.bam"
+		if wildcards.wf.startswith("vg-"):
+			return f"alignments/{wildcards.sample_id}.{wildcards.wf}.sq-order-fixed.sorted.bam"
+		else:
+			return f"alignments/{wildcards.sample_id}.{wildcards.wf}.sorted.bam"
 	else:
-		return "gridss/{sample_id}.{wf}.subset.{vc_regions}.bam"
+		return f"gridss/{wildcards.sample_id}.{wildcards.wf}.subset.{wildcards.vc_regions}.bam"
 
 rule gridss_run:
 	conda:			"../workflow/environments/gridss.yaml"
