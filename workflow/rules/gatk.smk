@@ -200,6 +200,7 @@ rule call:
 	conda:				"../environments/gatk.yaml"
 	input:
 		alignments		= f"gatk/{config['alignment_id']}.{{wf}}.nm-uq-set.sorted.bam",
+		alignments_bai	= f"gatk/{config['alignment_id']}.{{wf}}.nm-uq-set.sorted.bam.bai",
 		reference		= config['reference'],
 		faidx			= f"{config['reference']}.fai",
 		ref_dict		= f"{config['reference'].rstrip('.fa')}.dict",
