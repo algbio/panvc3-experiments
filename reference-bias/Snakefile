@@ -383,19 +383,21 @@ rule prepare_panvc2_input_rest:
 rule reheader_aligned_panvc2:
 	conda:			"../workflow/environments/biopython.yaml"
 	input:			
-		alignments	= "panvc2/call/{sample_id}/ext_vc/aligned_reads_unsorted.gatk.bam",
+		alignments	= "panvc2/call/{sample_id}/bowtie2/alignments.bam",
 		rnames		= "reference-mapping/panvc2.tsv"
-	output:			"panvc2/call/{sample_id}/alignments.rh.bam"
+	output:			"panvc2/call/{sample_id}/bowtie2/alignments.rh.bam"
 	shell:			"samtools reheader -c 'python3 ../workflow/scripts/replace_sam_rname_header.py {input.rnames}' {input.alignments} > {output}"
 
 
 rule prepare_msa_index_input_panvc2:
-	input:			"panvc2/call/{sample_id}/alignments.rh.bam"
+	input:
+		source		= "panvc2/call/{sample_id}/adhoc_ref_files/{chromosome}/adhoc_reference.aligned_to_ref",
+		target		= "index/panvc2/{chromosome}/recombinant.n1.gapped"
 	output:			"panvc2/call/{sample_id}/truth/{chromosome}.a2m.gz"
 	params:
 		source		= lambda ww: f"panvc2/call/{ww.sample_id}/adhoc_ref_files/{ww.chromosome}/adhoc_reference.aligned_to_ref",
 		target		= lambda ww: f"index/panvc2/{ww.chromosome}/recombinant.n1.gapped"
-	shell:			"(printf '>%s\tREF\\n' '{wildcards.chromosome}' && cat {params.target} && printf '>%s\t1\\n' '{wildcards.chromosome}' && cat {params.source}) | gzip > {output}"
+	shell:			"(printf '>%s\tREF\\n' '{wildcards.chromosome}' && cat {input.target} && printf '>%s\t1\\n' '{wildcards.chromosome}' && cat {input.source}) | gzip > {output}"
 
 
 rule combine_msa_index_input_panvc2:
@@ -422,7 +424,7 @@ rule project_alignments_panvc2:
 	# FIXME: conda
 	threads:			8
 	input:			
-		alignments		= "panvc2/call/{sample_id}/alignments.rh.sorted.bam",
+		alignments		= "panvc2/call/{sample_id}/bowtie2/alignments.rh.sorted.bam",
 		msa_index		= "panvc2/call/{sample_id}/truth.dat",
 		reference		= f"{REFERENCE_FA}.gz",
 		reference_fai	= f"{REFERENCE_FA}.gz.fai",
