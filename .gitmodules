@@ -4,3 +4,6 @@
 [submodule "take-one-out-chr1/lib/panvc-sample-workflow"]
 	path = take-one-out-chr1/lib/panvc2
 	url = https://github.com/algbio/panvc-sample-workflow.git
+[submodule "lib/panvc2"]
+	path = lib/panvc2
+	url = https://github.com/algbio/panvc-sample-workflow.git
