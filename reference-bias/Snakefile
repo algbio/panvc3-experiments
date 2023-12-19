@@ -18,10 +18,14 @@ MEM_GB							= 168
 READS_1							= f"reads/{SAMPLE_ID}.p1.fq.gz"
 READS_2							= f"reads/{SAMPLE_ID}.p2.fq.gz"
 
+PANVC2_FOUNDER_COUNT			= 2
+PANVC2_BWA_THREADS				= 40
+
 WORKFLOWS = [
 	"bowtie2",
 	"vg-map",
 	"vg-giraffe",
+	"panvc2",
 	"panvc3-bowtie2-f2-d2.mapq-recalculated",
 	"panvc3-bowtie2-f2-d2.max-mapq",
 	"panvc3-bowtie2-f7-d10.mapq-recalculated",
@@ -33,6 +37,20 @@ WORKFLOWS = [
 	"panvc3-bowtie2-f25-d50.mapq-recalculated",
 	"panvc3-bowtie2-f25-d50.max-mapq"
 ]
+
+
+# Copied from the take-one-out experiment.
+def reference_contigs():
+	with open(f"{REFERENCE_FA}.gz.fai", "r") as fp:
+		for line in fp:
+			line = line.rstrip("\n")
+			fields = line.split("\t")
+			yield fields[0]
+
+def non_founder_sequence_contigs():
+	founder_sequence_contigs = frozenset(CHROMOSOMES)
+	return filter(lambda x: x not in founder_sequence_contigs, reference_contigs())
+
 
 BOWTIE2_CONFIG = {
 	"alignment_id":								SAMPLE_ID,
@@ -53,6 +71,40 @@ PANVC3_CONFIG = {
 	"vcf2multialign_conda_environment_path":	None
 }
 
+PANVC2_INDEX_CONFIG = {
+	"benchmark_dir":							"benchmark/panvc2/index",
+	"index_root":								"index/panvc2",
+	"input_a2m":								[(x, f"panvc2/a2m/{x}.a2m") for x in reference_contigs()],
+	"max_edit_distance":						10,
+	"max_memory_MB":							1024 * MEM_GB,
+	"max_read_length":							105,
+	"n_refs":									1 + PANVC2_FOUNDER_COUNT,
+	"tempdir":									"temp/panvc2/index"
+}
+
+PANVC2_CONFIG = {
+	"benchmark_dir":							"benchmark/panvc2/index",
+	"index_root":								"index/panvc2",
+	"chromosome_list":							list(reference_contigs()),
+	"max_edit_distance":						10,
+	"max_memory_MB":							1024 * MEM_GB,
+	"max_read_len":								105,
+	"n_refs":									1 + PANVC2_FOUNDER_COUNT,
+	"output_root":								f"panvc2/call/{SAMPLE_ID}",
+	"ploidy":									2,
+	"ploidy_file":								"GRCh37",
+	"reads_file_1":								READS_1,
+	"reads_file_2":								READS_2,
+	"reads_all_path":							"panvc2/reads/all.fastq.gz",
+	"sensibility":								5,
+	"tempdir":									"temp/panvc2/call",
+	"variant_caller":							["gatk"],
+	"workflow":									["pg"],
+	"call_regions":								CHROMOSOMES,
+	"bwa_threads":								PANVC2_BWA_THREADS,
+	"panvc2_subdir":							"../lib/panvc2"
+}
+
 VG_CONFIG = {
 	"alignment_id":								SAMPLE_ID,
 	"reference":								REFERENCE_FA,
@@ -68,7 +120,8 @@ def none_if_empty(x):
 
 
 wildcard_constraints:
-	sample_id	= r"[^.]+"
+	sample_id	= r"[^.]+",
+	chromosome_	= "|".join(map(lambda x: f"({re.escape(x)})", CHROMOSOMES))
 
 
 rule all:
@@ -122,6 +175,20 @@ module panvc3_workflow:
 	config:		PANVC3_CONFIG
 
 use rule * from panvc3_workflow as panvc3_*
+
+
+module panvc2_indexing_workflow:
+	snakefile:	"../lib/panvc2/Snakefile.index"
+	config:		PANVC2_INDEX_CONFIG
+
+use rule * from panvc2_indexing_workflow as panvc2_index_*
+
+
+module panvc2_workflow:
+	snakefile:	"../lib/panvc2/Snakefile.call"
+	config:		PANVC2_CONFIG
+
+use rule * from panvc2_workflow as panvc2_call_*
 
 
 module vg_workflow:
@@ -273,28 +340,101 @@ rule reheader_aligned:
 	conda:			"../workflow/environments/biopython.yaml"
 	input:			
 		alignments	= "reads/{sample_id}.sorted.bam",
-		rnames		= "reference-mapping-truth.tsv"
+		rnames		= "reference-mapping/truth.tsv"
 	output:			"reads/{sample_id}.rh.sorted.bam"
 	shell:			"samtools reheader -c 'python3 ../workflow/scripts/replace_sam_rname_header.py {input.rnames}' {input.alignments} > {output}"
 
 
-rule project_truth:
+rule project_truth_alignments:
 	# FIXME: conda
-	threads:		workflow.cores
+	threads:			8
 	input:			
 		alignments		= "reads/{sample_id}.rh.sorted.bam",
 		msa_index		= "msa-index/truth.dat",
 		reference		= f"{REFERENCE_FA}.gz",
 		reference_fai	= f"{REFERENCE_FA}.gz.fai",
 		reference_gzi	= f"{REFERENCE_FA}.gz.gzi"
-	output:			"reads/{sample_id}.projected.sam.gz"
-	shell:			"panvc3_project_alignments"
-					" --alignments={input.alignments}"
-					" --msa-index={input.msa_index}"
-					" --reference={input.reference}"
-					" --reference-msa-id=REF"
-					" --ref-id-separator=/"
-					" | gzip > {output}"
+	output:				"reads/{sample_id}.projected.sam.gz"
+	shell:				"panvc3_project_alignments"
+						" --alignments={input.alignments}"
+						" --msa-index={input.msa_index}"
+						" --reference={input.reference}"
+						" --reference-msa-id=REF"
+						" --ref-id-separator=/"
+						" | gzip > {output}"
+
+
+# prepare_panvc2_input_founders and prepare_panvc2_input_rest copied from the take-one-out experiment. Consider adding a module.
+rule prepare_panvc2_input_founders:
+	input:				"panvc3/founder-sequences/chromosome.{chromosome_}.f2.d2.a2m.gz"
+	output:				"panvc2/a2m/{chromosome_}.a2m"
+	shell:				"gunzip -c -k {input} | sed -E 's/^[>][^\t]+\t(.*)$/>\1/' > {output}"
+
+
+rule prepare_panvc2_input_rest:
+	conda:				"../workflow/environments/biopython.yaml"
+	params:
+		founder_count	= PANVC2_FOUNDER_COUNT,
+	input:				"panvc3/founder-sequences/remaining-contigs.fa.gz"
+	output:				expand("panvc2/a2m/{chromosome}.a2m", chromosome = non_founder_sequence_contigs())
+	shell:				"gunzip -c -k {input} | python3 ../workflow/scripts/prepare_panvc2_input_rest.py {params.founder_count} panvc2/a2m/"
+
+
+rule reheader_aligned_panvc2:
+	conda:			"../workflow/environments/biopython.yaml"
+	input:			
+		alignments	= "panvc2/call/{sample_id}/ext_vc/aligned_reads_unsorted.gatk.bam",
+		rnames		= "reference-mapping/panvc2.tsv"
+	output:			"panvc2/call/{sample_id}/alignments.rh.bam"
+	shell:			"samtools reheader -c 'python3 ../workflow/scripts/replace_sam_rname_header.py {input.rnames}' {input.alignments} > {output}"
+
+
+rule prepare_msa_index_input_panvc2:
+	input:			"panvc2/call/{sample_id}/alignments.rh.bam"
+	output:			"panvc2/call/{sample_id}/truth/{chromosome}.a2m.gz"
+	params:
+		source		= lambda ww: f"panvc2/call/{ww.sample_id}/adhoc_ref_files/{ww.chromosome}/adhoc_reference.aligned_to_ref",
+		target		= lambda ww: f"index/panvc2/{ww.chromosome}/recombinant.n1.gapped"
+	shell:			"(printf '>%s\tREF\\n' '{wildcards.chromosome}' && cat {params.target} && printf '>%s\t1\\n' '{wildcards.chromosome}' && cat {params.source}) | gzip > {output}"
+
+
+rule combine_msa_index_input_panvc2:
+	input:			
+		tested		= expand("panvc2/call/{{sample_id}}/truth/{chromosome}.a2m.gz", chromosome = CHROMOSOMES),
+		rest		= "panvc3/founder-sequences/remaining-contigs.fa.gz"
+	output:			"panvc2/call/{sample_id}/truth.a2m.gz"
+	shell:			"cat {input.tested} {input.rest} > {output}"
+
+
+rule index_msa_panvc2:
+	# FIXME: conda
+	message:		"Building the MSA index"
+	input:			"panvc2/call/{sample_id}/truth.a2m.gz"
+	output:			"panvc2/call/{sample_id}/truth.dat"
+	shell:			"panvc3_index_msa"
+					" --build-index"
+					" --sequences={input}"
+					" --msa-index-output={output}"
+					" --pipe-input='gzip -d -c'"
+
+
+rule project_alignments_panvc2:
+	# FIXME: conda
+	threads:			8
+	input:			
+		alignments		= "panvc2/call/{sample_id}/alignments.rh.sorted.bam",
+		msa_index		= "panvc2/call/{sample_id}/truth.dat",
+		reference		= f"{REFERENCE_FA}.gz",
+		reference_fai	= f"{REFERENCE_FA}.gz.fai",
+		reference_gzi	= f"{REFERENCE_FA}.gz.gzi"
+	output:				"alignments/{sample_id}.panvc2.sam.gz"
+	shell:				"panvc3_project_alignments"
+						" --alignments={input.alignments}"
+						" --msa-index={input.msa_index}"
+						" --reference={input.reference}"
+						" --reference-msa-id=REF"
+						" --ref-id-separator=/"
+						" | gzip > {output}"
 
 
 rule count_supporting_reads:
