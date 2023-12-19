@@ -199,7 +199,7 @@ rule call:
 	message:			"Calling variants with GATK"
 	conda:				"../environments/gatk.yaml"
 	input:
-		alignments		= f"gatk/{config['alignment_id']}.{{wf}}.nm-uq-set.gatk-sorted-coordinate.bam",
+		alignments		= f"gatk/{config['alignment_id']}.{{wf}}.nm-uq-set.sorted.bam",
 		reference		= config['reference'],
 		faidx			= f"{config['reference']}.fai",
 		ref_dict		= f"{config['reference'].rstrip('.fa')}.dict",
