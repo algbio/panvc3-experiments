@@ -322,7 +322,7 @@ rule concatenate_reads:
 	message:		"Concatenating reads"
 	input:			expand("reads/{{sample_id}}.{chromosome}.s{chr_copy}.p{{pair}}.fq.gz", chromosome = CHROMOSOMES, chr_copy = [1, 2])
 	output:			"reads/{sample_id}.p{pair}.fq.gz"
-	shell:			"cat {input.reads_1} {input.reads_2} > {output}"
+	shell:			"cat {input} > {output}"
 
 
 # samtools cat requires identical headers while merge rewrites the records, so we use the latter.
