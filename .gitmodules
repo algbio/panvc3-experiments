@@ -1,6 +1,3 @@
-[submodule "svcalls/lib/reference_flow"]
-	path = svcalls/lib/reference_flow
-	url = https://github.com/tsnorri/reference_flow.git
 [submodule "take-one-out-chr1/lib/panvc-sample-workflow"]
 	path = take-one-out-chr1/lib/panvc2
 	url = https://github.com/algbio/panvc-sample-workflow.git

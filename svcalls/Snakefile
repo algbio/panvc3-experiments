@@ -149,7 +149,7 @@ use rule * from vg_workflow as vg_*
 #configfile: "config/reference-flow.yaml"
 #
 #module reference_flow_workflow:
-#	snakefile:	"lib/reference_flow/snakemake/Snakefile"
+#	snakefile:	"../lib/reference_flow/snakemake/Snakefile"
 #	config: config["reference_flow"]
 #
 #use rule * from reference_flow_workflow as reference_flow_*
@@ -166,7 +166,7 @@ rule reference_flow_run:
 	output:			"alignments/{sample_id}.reference-flow.sam"
 	params:
 		rf_output	= "reference-flow/run/experiments/{sample_id}/thrds0_S1_b1000_ld1/chr1-refflow-10-thrds0_S1_b1000_ld1-liftover.sam"
-	shell:			"snakemake --printshellcmds --cores {threads} --snakefile lib/reference_flow/snakemake/Snakefile --use-conda --conda-prefix ../conda-env --configfile config/reference-flow-sp.yaml -- && mkdir -p alignments && mv {params.rf_output} {output}"
+	shell:			"snakemake --printshellcmds --cores {threads} --snakefile ../lib/reference_flow/snakemake/Snakefile --use-conda --conda-prefix ../conda-env --configfile config/reference-flow-sp.yaml -- && mkdir -p alignments && mv {params.rf_output} {output}"
 
 
 def manta_region_arg(wildcards):
