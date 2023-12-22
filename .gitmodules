@@ -7,3 +7,6 @@
 [submodule "lib/panvc2"]
 	path = lib/panvc2
 	url = https://github.com/algbio/panvc-sample-workflow.git
+[submodule "lib/reference_flow"]
+	path = lib/reference_flow
+	url = https://github.com/tsnorri/reference_flow.git
