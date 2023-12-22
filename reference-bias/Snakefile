@@ -25,6 +25,7 @@ WORKFLOWS = [
 	"bowtie2",
 	"vg-map",
 	"vg-giraffe",
+	"reference-flow",
 	"panvc2",
 	"panvc3-bowtie2-f2-d2.mapq-recalculated",
 	"panvc3-bowtie2-f2-d2.max-mapq",
@@ -196,6 +197,30 @@ module vg_workflow:
 	config:		VG_CONFIG
 
 use rule * from vg_workflow as vg_*
+
+
+# Enable when this is resolved: https://github.com/snakemake/snakemake/issues/2499
+#configfile: "config/reference-flow.yaml"
+#
+#module reference_flow_workflow:
+#	snakefile:	"lib/reference_flow/snakemake/Snakefile"
+#	config: config["reference_flow"]
+#
+#use rule * from reference_flow_workflow as reference_flow_*
+#
+#use rule all from reference_flow_workflow as reference_flow_all with:
+#	benchmark:	"benchmark/reference_flow"
+
+rule reference_flow_run:
+	threads:		workflow.cores
+	benchmark:		"benchmark/run_reference_flow_sp/{sample_id}"
+	input:
+		reads_1		= READS_1,
+		reads_2		= READS_2
+	output:			"alignments/{sample_id}.reference-flow.sam"
+	params:
+		rf_output	= "reference-flow/run/experiments/{sample_id}/thrds0_S1_b1000_ld1/chr1-refflow-10-thrds0_S1_b1000_ld1-liftover.sam"
+	shell:			"snakemake --printshellcmds --cores {threads} --snakefile ../lib/reference_flow/snakemake/Snakefile --use-conda --conda-prefix ../conda-env --configfile config/reference-flow-sp.yaml -- && mkdir -p alignments && mv {params.rf_output} {output}"
 
 
 rule remove_sample_from_known_variants:
