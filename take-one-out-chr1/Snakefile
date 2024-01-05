@@ -20,6 +20,8 @@ MEM_GB							= 168
 
 READS_1							= "../reads/ERR194147_1.fastq.gz"
 READS_2							= "../reads/ERR194147_2.fastq.gz"
+SAMPLED_READS_1					= "reads/ERR194147_1.sample0.5.fastq.gz"
+SAMPLED_READS_2					= "reads/ERR194147_2.sample0.5.fastq.gz"
 SAMPLING_PROBABILITY			= "0.5"
 
 PANVC2_FOUNDER_COUNT			= 2
@@ -28,8 +30,8 @@ PANVC2_BWA_THREADS				= 40
 WORKFLOWS = [
 	("bowtie2",										"gatk",			"chr1"),
 	("bowtie2",										"gatk",			"chr1_selected"),
-	("bowtie2",										"graphtyper2",	"chr1"),
-	("bowtie2",										"graphtyper2",	"chr1_selected"),
+	#("bowtie2",										"graphtyper2",	"chr1"),
+	#("bowtie2",										"graphtyper2",	"chr1_selected"),
 	("vg-map",										"gatk",			"chr1"),
 	("vg-map",										"gatk",			"chr1_selected"),
 	("vg-giraffe",									"gatk",			"chr1"),
@@ -50,7 +52,7 @@ WORKFLOWS = [
 	("panvc3-bowtie2-f14-d25.max-mapq",				"gatk",			"chr1_selected"),
 	("panvc3-bowtie2-f25-d50.max-mapq",				"gatk",			"chr1"),
 	("panvc3-bowtie2-f25-d50.max-mapq",				"gatk",			"chr1_selected"),
-	("panvc2",										"gatk",			"1")
+	("panvc2",										"gatk",			"chr1")
 ]
 
 
@@ -104,8 +106,8 @@ def panvc3_minimum_distances():
 BOWTIE2_CONFIG = {
 	"alignment_id":								SAMPLE_ID,
 	"reference":								REFERENCE_FA,
-	"reads_1":									READS_1,
-	"reads_2":									READS_2
+	"reads_1":									SAMPLED_READS_1,
+	"reads_2":									SAMPLED_READS_2
 }
 
 PANVC3_CONFIG = {
@@ -114,8 +116,8 @@ PANVC3_CONFIG = {
 	"chromosomes":								CHROMOSOMES,
 	"known_variants_prefix":					"input/known-variants.",
 	"known_variants_suffix":					".vcf",
-	"reads_1":									READS_1,
-	"reads_2":									READS_2,
+	"reads_1":									SAMPLED_READS_1,
+	"reads_2":									SAMPLED_READS_2,
 	"panvc3_conda_environment_path":			None,
 	"vcf2multialign_conda_environment_path":	None
 }
@@ -142,8 +144,8 @@ PANVC2_CONFIG = {
 	"output_root":								f"panvc2/call/{SAMPLE_ID}",
 	"ploidy":									2,
 	"ploidy_file":								"GRCh37",
-	"reads_file_1":								READS_1,
-	"reads_file_2":								READS_2,
+	"reads_file_1":								SAMPLED_READS_1,
+	"reads_file_2":								SAMPLED_READS_2,
 	"reads_all_path":							"panvc2/reads/all.fastq.gz",
 	"sensibility":								5,
 	"tempdir":									"temp/panvc2/call",
@@ -158,8 +160,8 @@ VG_CONFIG = {
 	"alignment_id":								SAMPLE_ID,
 	"reference":								REFERENCE_FA,
 	"known_variants":							"input/known-variants.1.vcf.gz",
-	"reads_1":									READS_1,
-	"reads_2":									READS_2,
+	"reads_1":									SAMPLED_READS_1,
+	"reads_2":									SAMPLED_READS_2,
 	"mem_gb":									MEM_GB
 }
 
@@ -176,8 +178,8 @@ GATK_CONFIG = {
 	"known_variants":							"input/known-variants.1.vcf.gz",
 	"chromosomes":								CHROMOSOMES,
 	"ploidy":									2,
-	"reads_1":									READS_1,
-	"reads_2":									READS_2,
+	"reads_1":									SAMPLED_READS_1,
+	"reads_2":									SAMPLED_READS_2,
 	"mem_mb":									43008
 }
 
@@ -187,7 +189,13 @@ wildcard_constraints:
 
 
 rule all:
+	input:	"summary.csv"
+
+
+rule summarise:
 	input:	expand("hap.py/{sample_id}.{wf[0]}.{wf[1]}.{wf[2]}.{eval_regions}.summary.csv", sample_id = SAMPLE_ID, wf = WORKFLOWS, eval_regions = ['chr1', 'chr1_selected'])
+	output:	"summary.csv"
+	shell:	"./summarise.sh > {output}"
 
 
 rule reads:
@@ -246,14 +254,14 @@ use rule * from panvc3_workflow as panvc3_*
 
 
 module panvc2_indexing_workflow:
-	snakefile:	"lib/panvc2/Snakefile.index"
+	snakefile:	"../lib/panvc2/Snakefile.index"
 	config:		PANVC2_INDEX_CONFIG
 
 use rule * from panvc2_indexing_workflow as panvc2_index_*
 
 
 module panvc2_workflow:
-	snakefile:	"lib/panvc2/Snakefile.call"
+	snakefile:	"../lib/panvc2/Snakefile.call"
 	config:		PANVC2_CONFIG
 
 use rule * from panvc2_workflow as panvc2_call_*
@@ -315,10 +323,11 @@ rule prepare_panvc2_input_rest:
 	shell:				"gunzip -c -k {input} | python3 ../workflow/scripts/prepare_panvc2_input_rest.py {params.founder_count} panvc2/a2m/"
 
 
-rule move_panvc2_output:
-	input:				"panvc2/call/{sample_id}/ext_vc/variants.gatk.vcf",
-	output:				"variants/{sample_id}.panvc2.gatk.1.vcf"
-	shell:				"mkdir -p variants && mv {input} {output}" 
+# FIXME: The script always adds the hs37d5 chromosome 1 header.
+rule fix_panvc2_output:
+	input:				"panvc2/call/{sample_id}/ext_vc/1/variants.normalized.gatk.vcf"
+	output:				"variants/{sample_id}.panvc2.gatk.chr1.vcf"
+	shell:				"mkdir -p variants && scripts/add_contig_header_to_panvc2_output.sh {input} {output}" 
 
 
 rule run_hap_py:
