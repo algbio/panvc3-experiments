@@ -58,6 +58,21 @@ rule mason:
 	shell:		"echo 'installed dependencies in mason.yaml'"
 
 
+rule panvc2:
+	conda:		"../../lib/panvc2/workflow/envs/panvc.yaml"
+	shell:		"echo 'Installed dependencies for PanVC 2'"
+
+
+rule panvc2_gatk:
+	conda:		"../../lib/panvc2/workflow/envs/panvc-gatk.yaml"
+	shell:		"echo 'Installed dependencies for PanVC 2 (GATK)'"
+
+
+rule panvc2_vcf2multialign:
+	conda:		"../../lib/panvc2/workflow/envs/vcf2multialign.yaml"
+	shell:		"echo 'Installed dependencies for PanVC 2 (vcf2multialign)'"
+
+
 rule panvc3:
 	conda:		"../environments/panvc3.yaml"
 	shell:		"echo 'Installed dependencies in panvc3.yaml'"
