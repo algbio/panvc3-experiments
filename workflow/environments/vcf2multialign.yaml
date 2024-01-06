@@ -3,4 +3,4 @@ channels:
 - conda-forge
 - bioconda
 dependencies:
-- panvc3=v1.0.1
+- vcf2multialign=v1.0.1

@@ -68,8 +68,8 @@ PANVC3_CONFIG = {
 	"known_variants_suffix":					".vcf",
 	"reads_1":									READS_1,
 	"reads_2":									READS_2,
-	"panvc3_conda_environment_path":			None,
-	"vcf2multialign_conda_environment_path":	None
+	"panvc3_conda_environment_path":			"../workflow/environments/panvc3.yaml",
+	"vcf2multialign_conda_environment_path":	"../workflow/environments/vcf2multialign.yaml"
 }
 
 PANVC2_INDEX_CONFIG = {
@@ -235,7 +235,7 @@ rule remove_sample_from_known_variants:
 
 rule filter_heterozygous_variants_from_truth:
 	message:		"Filtering heterozygous variants from the truth"
-	conda:			none_if_empty(config.get('vcf2multialign_conda_environment_path'))
+	conda:			"../workflow/environments/vcf2multialign.yaml"
 	priority:		100
 	input:	
 		truth		= TRUTH
@@ -253,7 +253,7 @@ rule filter_heterozygous_variants_from_truth:
 
 rule generate_predicted_sequences:
 	message:		"Generating predicted haplotype sequences"
-	conda:			none_if_empty(config.get('vcf2multialign_conda_environment_path'))
+	conda:			"../workflow/environments/vcf2multialign.yaml"
 	priority:		100
 	input:
 		reference	= REFERENCE_FA,
@@ -277,8 +277,8 @@ rule generate_predicted_sequences:
 
 
 rule generate_predicated_a2m:
-	message:        "Generating MSA of the predicted sequences"
-	conda:			none_if_empty(config.get('vcf2multialign_conda_environment_path'))
+	message:		"Generating MSA of the predicted sequences"
+	conda:			"../workflow/environments/vcf2multialign.yaml"
 	input:
 		reference	= REFERENCE_FA,
 		variants	= "input/tested-variants.{chromosome}.vcf"
@@ -466,7 +466,7 @@ rule project_alignments_panvc2:
 
 rule count_supporting_reads:
 	message:			"Counting supporting reads"
-	conda:				none_if_empty(config.get('panvc3_conda_environment_path'))
+	conda:				"../workflow/environments/panvc3.yaml"
 	threads:			4
 	input:				
 		alignments		= "alignments/{sample_id}.{wf}.sorted.bam",
@@ -479,7 +479,7 @@ rule count_supporting_reads:
 
 rule calculate_reference_bias:
 	message:			"Calculating reference bias"
-	conda:				none_if_empty(config.get('panvc3_conda_environment_path'))
+	conda:				"../workflow/environments/panvc3.yaml"
 	threads:			3
 	input:				"supporting-reads-counts/{sample_id}.{wf}.{chromosome}.{regions}.txt.gz"
 	output:				"reference-bias/{sample_id}.{wf}.{chromosome}.{regions}.mc{mc}.txt.gz"

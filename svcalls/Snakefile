@@ -64,8 +64,8 @@ PANVC3_CONFIG = {
 	"known_variants_suffix":					KNOWN_VARIANTS_SUFFIX_,
 	"reads_1":									READS_1,
 	"reads_2":									READS_2,
-	"panvc3_conda_environment_path":			None,
-	"vcf2multialign_conda_environment_path":	None
+	"panvc3_conda_environment_path":			"../workflow/environments/panvc3.yaml",
+	"vcf2multialign_conda_environment_path":	"../workflow/environments/vcf2multialign.yaml"
 }
 
 VG_CONFIG = {

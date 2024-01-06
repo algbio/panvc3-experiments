@@ -118,8 +118,8 @@ PANVC3_CONFIG = {
 	"known_variants_suffix":					".vcf",
 	"reads_1":									SAMPLED_READS_1,
 	"reads_2":									SAMPLED_READS_2,
-	"panvc3_conda_environment_path":			None,
-	"vcf2multialign_conda_environment_path":	None
+	"panvc3_conda_environment_path":			"../workflow/environments/panvc3.yaml",
+	"vcf2multialign_conda_environment_path":	"../workflow/environments/vcf2multialign.yaml"
 }
 
 PANVC2_INDEX_CONFIG = {
