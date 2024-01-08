@@ -2,4 +2,4 @@ channels:
 - conda-forge
 - bioconda
 dependencies:
-- vg
+- vg=1.52.0
