@@ -1,4 +1,4 @@
-# PanVC 3 Experiment Scripts
+# [PanVC 3](https://github.com/tsnorri/panvc3) Experiment Scripts
 
 > **_NOTE:_** This repository contains the experiments described in our reviesed manuscript completed in the beginning of January 2024. In case there are any problems running the experiments, please contact us by e-mail.
 
