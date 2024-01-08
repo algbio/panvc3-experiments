@@ -4,10 +4,10 @@
 
 ## Requirements
  
- * [Snakemake](https://snakemake.readthedocs.io/) (tested with version 7.32.4)
+ * [Snakemake](https://snakemake.readthedocs.io/) (tested with version 7.32.4 and Python 3.11)
  * [Conda](https://conda.io/) (tested with version 22.11.1)
 
-> **_NOTE:_** The experiment scripts do not work with Snakemake 8.0.1 due to [a bug in f-string handling](https://github.com/snakemake/snakemake/issues/2586).
+> **_NOTE:_** Using the experiment scripts with Python 3.12 may require Snakemake 8.1 due to [a change in f-string handling](https://github.com/snakemake/snakemake/issues/2586).
 
 ## Preparing the experiments
 
