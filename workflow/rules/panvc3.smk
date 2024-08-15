@@ -1,4 +1,4 @@
-# Copyright (c) Tuukka Norri 2023
+# Copyright (c) Tuukka Norri 2023-2024
 # Licenced under the MIT licence.
 
 # vim: syntax=snakefile
@@ -146,17 +146,17 @@ rule project_alignments:
 				alignments			= f"alignments/{config['alignment_id']}.panvc3-{{aligner}}-f{{founder_count}}-d{{minimum_distance}}.sorted.bam"
 	output:		
 				alignments			= f"alignments/{config['alignment_id']}.panvc3-{{aligner}}-f{{founder_count}}-d{{minimum_distance}}.projected.sam.gz"
-	shell:		"panvc3_project_alignments"
-				" --alignments={input.alignments}"
-				" --msa-index={input.msa_index}"
-				" --reference={input.reference}"
-				" --reference-msa-id=REF"
-				" --ref-id-separator=/"
-				" --reference-order-input={input.seq_output_order}"
-				" --record-index-tag=XI"
-				" --preserve-tag=XS"
-				" --preserve-tag=YS"
-				" | gzip > {output.alignments}"
+	shell:		"samtools view -@ 2 -h {input.alignments}"
+				"| panvc3_project_alignments"
+				"  --msa-index={input.msa_index}"
+				"  --reference={input.reference}"
+				"  --reference-msa-id=REF"
+				"  --ref-id-separator=/"
+				"  --reference-order-input={input.seq_output_order}"
+				"  --record-index-tag=XI"
+				"  --preserve-tag=XS"
+				"  --preserve-tag=YS"
+				"| gzip > {output.alignments}"
 
 
 rule recalculate_mapq:
@@ -166,9 +166,9 @@ rule recalculate_mapq:
 	benchmark:	f"benchmark/panvc3/recalculate_mapq.{config['alignment_id']}.{{aligner}}.f{{founder_count}}.d{{minimum_distance}}"
 	input:		f"alignments/{config['alignment_id']}.panvc3-{{aligner}}-f{{founder_count}}-d{{minimum_distance}}.projected.qname-sorted.bam"
 	output:		f"alignments/{config['alignment_id']}.panvc3-{{aligner}}-f{{founder_count}}-d{{minimum_distance}}.mapq-recalculated.sam.gz"
-	shell:		"panvc3_recalculate_mapq"
-				" --alignments={input}"
-				" | gzip > {output}"
+	shell:		"samtools view -@ 2 -h {input}"
+				"| panvc3_recalculate_mapq"
+				"| gzip > {output}"
 
 
 rule max_mapq:
@@ -178,10 +178,10 @@ rule max_mapq:
 	benchmark:	f"benchmark/panvc3/max_mapq.{config['alignment_id']}.{{aligner}}.f{{founder_count}}.d{{minimum_distance}}"
 	input:		f"alignments/{config['alignment_id']}.panvc3-{{aligner}}-f{{founder_count}}-d{{minimum_distance}}.mapq-recalculated.sam.gz"
 	output:		f"alignments/{config['alignment_id']}.panvc3-{{aligner}}-f{{founder_count}}-d{{minimum_distance}}.max-mapq.sam.gz"
-	shell:		"panvc3_subset_alignments"
-				" --alignments={input}"
-				" --best-mapq"
-				" | gzip > {output}"
+	shell:		"samtools view -@ 2 -h {input}"
+				"| panvc3_subset_alignments"
+				"  --best-mapq"
+				"| gzip > {output}"
 
 
 # Rewrite the CIGAR strings for e.g. Manta.
@@ -192,7 +192,7 @@ rule alignment_match:
 	benchmark:  f"benchmark/panvc3/alignment_match/{{alignments}}.benchmark"
 	input:		"{alignments}.sam.gz"
 	output:		"{alignments}.alignment-match.sam.gz"
-	shell:		"panvc3_rewrite_cigar"
-				" --alignments={input}"
-				" --output-alignment-match-ops"
-				" | gzip > {output}"
+	shell:		"samtools view -@ 2 -h {input}"
+				"| panvc3_rewrite_cigar"
+				"  --output-alignment-match-ops"
+				"| gzip > {output}"

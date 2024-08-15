@@ -1,4 +1,4 @@
-# Copyright (c) Tuukka Norri 2023
+# Copyright (c) Tuukka Norri 2023-2024
 # Licenced under the MIT licence.
 
 # vim: syntax=snakefile
@@ -380,13 +380,13 @@ rule project_truth_alignments:
 		reference_fai	= f"{REFERENCE_FA}.gz.fai",
 		reference_gzi	= f"{REFERENCE_FA}.gz.gzi"
 	output:				"reads/{sample_id}.projected.sam.gz"
-	shell:				"panvc3_project_alignments"
-						" --alignments={input.alignments}"
-						" --msa-index={input.msa_index}"
-						" --reference={input.reference}"
-						" --reference-msa-id=REF"
-						" --ref-id-separator=/"
-						" | gzip > {output}"
+	shell:				"samtools view -@ 2 -h {input.alignments}"
+						"| panvc3_project_alignments"
+						"  --msa-index={input.msa_index}"
+						"  --reference={input.reference}"
+						"  --reference-msa-id=REF"
+						"  --ref-id-separator=/"
+						"| gzip > {output}"
 
 
 # prepare_panvc2_input_founders and prepare_panvc2_input_rest copied from the take-one-out experiment. Consider adding a module.
@@ -455,13 +455,13 @@ rule project_alignments_panvc2:
 		reference_fai	= f"{REFERENCE_FA}.gz.fai",
 		reference_gzi	= f"{REFERENCE_FA}.gz.gzi"
 	output:				"alignments/{sample_id}.panvc2.sam.gz"
-	shell:				"panvc3_project_alignments"
-						" --alignments={input.alignments}"
-						" --msa-index={input.msa_index}"
-						" --reference={input.reference}"
-						" --reference-msa-id=REF"
-						" --ref-id-separator=/"
-						" | gzip > {output}"
+	shell:				"samtools view -@ 2 -h"
+						"| panvc3_project_alignments"
+						"  --msa-index={input.msa_index}"
+						"  --reference={input.reference}"
+						"  --reference-msa-id=REF"
+						"  --ref-id-separator=/"
+						"| gzip > {output}"
 
 
 rule count_supporting_reads:
@@ -474,7 +474,15 @@ rule count_supporting_reads:
 	output:				"supporting-reads-counts/{sample_id}.{wf}.{chromosome}.{regions}.txt.gz"
 	params:
 		regions_param	= lambda wildcards: f"--regions={CONFIDENT_REGIONS}" if "confident" == wildcards.regions else ""
-	shell:				"set +o pipefail && samtools view -@ 2 {input.alignments} | panvc3_count_supporting_reads --vcf={input.variants} --chr={wildcards.chromosome} --contig={wildcards.chromosome} {params.regions_param} | gzip -c --verbose > {output}"
+	shell:				"set +o pipefail"
+						"&& samtools view -@ 2 -h {input.alignments}"
+						"| panvc3_count_supporting_reads"
+						"  --vcf={input.variants}"
+						"  --chr={wildcards.chromosome}"
+						"  --contig={wildcards.chromosome}"
+						"  {params.regions_param}"
+						"| gzip -c --verbose"
+						"> {output}"
 
 
 rule calculate_reference_bias:
