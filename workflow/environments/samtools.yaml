@@ -2,5 +2,5 @@ channels:
 - conda-forge
 - bioconda
 dependencies:
-- htslib
-- samtools 
+- htslib=1.18
+- samtools=1.18
