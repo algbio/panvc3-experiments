@@ -3,6 +3,6 @@ channels:
 - conda-forge
 - bioconda
 dependencies:
-- htslib
+- htslib=1.17
 - panvc3=v1.0.1
-- samtools
+- samtools=1.17
