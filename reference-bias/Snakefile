@@ -308,7 +308,7 @@ rule combine_predicted_a2m:
 
 
 rule index_msa:
-	# FIXME: conda
+	conda:			"../workflow/environments/panvc3.yaml"
 	message:		"Building the MSA index"
 	input:			"msa-index/truth.a2m.gz"
 	output:			"msa-index/truth.dat"
@@ -374,7 +374,7 @@ rule reheader_aligned:
 
 
 rule project_truth_alignments:
-	# FIXME: conda
+	conda:				"../workflow/environments/panvc3.yaml"
 	threads:			8
 	input:			
 		alignments		= "reads/{sample_id}.rh.sorted.bam",
@@ -456,7 +456,7 @@ rule combine_msa_index_input_panvc2:
 
 
 rule index_msa_panvc2:
-	# FIXME: conda
+	conda:			"../workflow/environments/panvc3.yaml"
 	message:		"Building the MSA index"
 	input:			"panvc2/call/{sample_id}/truth.a2m.gz"
 	output:			"panvc2/call/{sample_id}/truth.dat"
@@ -468,7 +468,7 @@ rule index_msa_panvc2:
 
 
 rule project_alignments_panvc2:
-	# FIXME: conda
+	conda:				"../workflow/environments/panvc3.yaml"
 	threads:			8
 	input:			
 		alignments		= "panvc2/call/{sample_id}/bowtie2/alignments.rh.sorted.bam",
