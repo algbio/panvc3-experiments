@@ -264,7 +264,8 @@ rule generate_predicted_sequences:
 	output:
 		haplotype_1	= "input/{chromosome}.{sample_id}.1.fa",
 		haplotype_2	= "input/{chromosome}.{sample_id}.2.fa",
-		overlaps	= "input/overlaps.{chromosome}.tsv"
+		# The following file name needs to have the same wildcards even though the output is not sample-specific.
+		overlaps	= "input/overlaps.{chromosome}.{sample_id}.tsv"
 	shell:			"cd input && vcf2multialign"
 					" --haplotypes"
 					" --input-reference=../{input.reference}"
@@ -274,7 +275,7 @@ rule generate_predicted_sequences:
 					" --dst-chromosome={wildcards.chromosome}"
 					" --output-sequences-separate"
 					" --separate-output-format=A2M"
-					" --output-overlaps=overlaps.{wildcards.chromosome}.tsv"
+					" --output-overlaps=overlaps.{wildcards.chromosome}.{wildcards.sample_id}.tsv"
 					" --omit-reference"
 					" --unaligned"
 
