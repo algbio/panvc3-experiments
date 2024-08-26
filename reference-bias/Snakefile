@@ -264,7 +264,7 @@ rule generate_predicted_sequences:
 	output:
 		haplotype_1	= "input/{chromosome}.{sample_id}.1.fa",
 		haplotype_2	= "input/{chromosome}.{sample_id}.2.fa",
-		overlaps	= "input/overlaps.{chromosome}.{sample_id}.tsv"
+		overlaps	= "input/overlaps.{chromosome}.tsv"
 	shell:			"cd input && vcf2multialign"
 					" --haplotypes"
 					" --input-reference=../{input.reference}"
