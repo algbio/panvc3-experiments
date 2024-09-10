@@ -153,7 +153,6 @@ rule project_alignments:
 				"  --reference-msa-id=REF"
 				"  --ref-id-separator=/"
 				"  --reference-order-input={input.seq_output_order}"
-				"  --record-index-tag=XI"
 				"  --preserve-tag=XS"
 				"  --preserve-tag=YS"
 				"| gzip > {output.alignments}"
