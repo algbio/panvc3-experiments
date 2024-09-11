@@ -5,4 +5,5 @@ channels:
 dependencies:
 - htslib=1.17
 - panvc3=v1.0.1
+- python >=3.11.0
 - samtools=1.17
