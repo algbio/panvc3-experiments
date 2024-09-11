@@ -136,7 +136,7 @@ rule project_alignments:
 	message:	"Projecting the alignments"
 	conda:		none_if_empty(config.get('panvc3_conda_environment_path'))
 	benchmark:	f"benchmark/panvc3/project_alignments.{config['alignment_id']}.{{aligner}}.f{{founder_count}}.d{{minimum_distance}}"
-	threads:	10
+	threads:	23
 	input:		
 				reference			= f"{config['reference']}.gz",
 				reference_fai		= f"{config['reference']}.gz.fai",
@@ -148,6 +148,7 @@ rule project_alignments:
 				alignments			= f"alignments/{config['alignment_id']}.panvc3-{{aligner}}-f{{founder_count}}-d{{minimum_distance}}.projected.sam.gz"
 	shell:		"samtools view -@ 2 -h {input.alignments}"
 				"| panvc3_project_alignments"
+				"  --threads={threads}"
 				"  --msa-index={input.msa_index}"
 				"  --reference={input.reference}"
 				"  --reference-msa-id=REF"
