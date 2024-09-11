@@ -136,7 +136,7 @@ rule project_alignments:
 	message:	"Projecting the alignments"
 	conda:		none_if_empty(config.get('panvc3_conda_environment_path'))
 	benchmark:	f"benchmark/panvc3/project_alignments.{config['alignment_id']}.{{aligner}}.f{{founder_count}}.d{{minimum_distance}}"
-	threads:	23
+	threads:	workflow.cores
 	input:		
 				reference			= f"{config['reference']}.gz",
 				reference_fai		= f"{config['reference']}.gz.fai",
