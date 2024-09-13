@@ -415,7 +415,7 @@ rule index_second_stage_panvc2:
 	threads:			workflow.cores
 	input:				"panvc2/call/{sample_id}/ext_vc/reference.fa"
 	output:				multiext("panvc2/call/{sample_id}/bowtie2/index", ".1.bt2", ".2.bt2", ".3.bt2", ".4.bt2", ".rev.1.bt2", ".rev.2.bt2")
-	shell:				"bowtie2-build --threads {threads} {input} panvc2/call/{sample_id}/bowtie2/index"
+	shell:				"bowtie2-build --threads {threads} {input} panvc2/call/{wildcards.sample_id}/bowtie2/index"
 
 
 rule align_second_stage_panvc2:
@@ -426,7 +426,7 @@ rule align_second_stage_panvc2:
 		reads_1			= READS_1,
 		reads_2			= READS_2
 	output:				"panvc2/call/{sample_id}/bowtie2/alignments.sam.gz"
-	shell:				"bowtie2 --threads {threads} -1 {input.reads_1} -2 {input.reads_2} -x panvc2/call/{sample_id}/bowtie2/index | gzip > {output}"
+	shell:				"bowtie2 --threads {threads} -1 {input.reads_1} -2 {input.reads_2} -x panvc2/call/{wildcards.sample_id}/bowtie2/index | gzip > {output}"
 
 
 rule reheader_aligned_panvc2:
