@@ -156,7 +156,7 @@ rule alignment_precision_recall_summary:
 rule reference_bias_summary:
 	conda:		"../workflow/environments/biopython.yaml"
 	threads:	2
-	input:		expand("reference-bias/{sample_id}.{wf}.{chromosome}.{regions}.mc{mc}.txt.gz", sample_id = SAMPLE_ID, wf = WORKFLOWS, chromosome = CHROMOSOMES, regions = ["all", "confident"], mc = [1, 5, 10, 15, 20, 25]),
+	input:		expand("reference-bias/{sample_id}.{wf}.{chromosome}.{regions}.{primary_aln}.mc{mc}.txt.gz", sample_id = SAMPLE_ID, wf = WORKFLOWS, chromosome = CHROMOSOMES, regions = ["all", "confident"], primary_aln = ["primary-aln-only", "all-aln"], mc = [1, 5, 10, 15, 20, 25]),
 	output:		"reference-bias-summary.tsv.gz"
 	shell:		"python3 scripts/summarise_reference_bias.py | gzip > {output}"
 
@@ -496,9 +496,10 @@ rule count_supporting_reads:
 	input:				
 		alignments		= "alignments/{sample_id}.{wf}.sorted.bam",
 		variants		= "input/tested-variants.{chromosome}.vcf"
-	output:				"supporting-reads-counts/{sample_id}.{wf}.{chromosome}.{regions}.txt.gz"
+	output:				"supporting-reads-counts/{sample_id}.{wf}.{chromosome}.{regions}.{primary_aln}.txt.gz"
 	params:
-		regions_param	= lambda wildcards: f"--regions={CONFIDENT_REGIONS}" if "confident" == wildcards.regions else ""
+		regions_param	= lambda wildcards: f"--regions={CONFIDENT_REGIONS}" if "confident" == wildcards.regions else "",
+		primary_aln_param	= lambda wildcards: f"--primary-only" if "primary-aln-only" == wildcards.primary_aln else ""
 	shell:				"set +o pipefail"
 						"&& samtools view -@ 2 -h {input.alignments}"
 						"| panvc3_count_supporting_reads"
@@ -506,6 +507,7 @@ rule count_supporting_reads:
 						"  --chr={wildcards.chromosome}"
 						"  --contig={wildcards.chromosome}"
 						"  {params.regions_param}"
+						"  {params.primary_aln_param}"
 						"| gzip -c --verbose"
 						"> {output}"
 
@@ -514,8 +516,8 @@ rule calculate_reference_bias:
 	message:			"Calculating reference bias"
 	conda:				"../workflow/environments/panvc3.yaml"
 	threads:			3
-	input:				"supporting-reads-counts/{sample_id}.{wf}.{chromosome}.{regions}.txt.gz"
-	output:				"reference-bias/{sample_id}.{wf}.{chromosome}.{regions}.mc{mc}.txt.gz"
+	input:				"supporting-reads-counts/{sample_id}.{wf}.{chromosome}.{regions}.{primary_aln}.txt.gz"
+	output:				"reference-bias/{sample_id}.{wf}.{chromosome}.{regions}.{primary_aln}.mc{mc}.txt.gz"
 	shell:				"gunzip -c -k {input} | panvc3_calculate_reference_bias.py --min-coverage {wildcards.mc} | gzip > {output}"
 
 

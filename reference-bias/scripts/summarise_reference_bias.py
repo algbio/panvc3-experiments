@@ -11,15 +11,15 @@ import re
 import sys
 
 
-# E.g. HG001.panvc3-bowtie2-f14-d25.mapq-recalculated.1.all.mc10.txt
+# E.g. HG001.panvc3-bowtie2-f14-d25.mapq-recalculated.1.all.all-aln.mc10.txt
 file_name_pattern = re.compile(
-	r"^ (?: .* [/])? (?P<sample> [^.]+) [.] (?P<wf> .+) [.] (?P<chromosome> \d+) [.] (?P<regions> [^.]+) [.] mc (?P<min_cov> \d+) [.]txt[.]gz $",
+	r"^ (?: .* [/])? (?P<sample> [^.]+) [.] (?P<wf> .+) [.] (?P<chromosome> \d+) [.] (?P<regions> [^.]+) [.] ?P<aln_type>) [.] mc (?P<min_cov> \d+) [.]txt[.]gz $",
 	re.VERBOSE
 )
 
 
 if __name__ == "__main__":
-	print("SAMPLE\tWORKFLOW\tCHROMOSOME\tREGIONS\tMIN_COVERAGE\tBALANCE\tREF_LENGTH\tALT_LENGTH")
+	print("SAMPLE\tWORKFLOW\tCHROMOSOME\tREGIONS\tALN_TYPE\tMIN_COVERAGE\tBALANCE\tREF_LENGTH\tALT_LENGTH")
 	for ds in os.scandir("reference-bias"):
 		mm = file_name_pattern.match(ds.path)
 		if mm is None:
@@ -29,6 +29,7 @@ if __name__ == "__main__":
 		wf = mm.group("wf")
 		chromosome = mm.group("chromosome")
 		regions = mm.group("regions")
+		aln_type = mm.group("aln_type")
 		min_cov = int(mm.group("min_cov"))
 
 		with gzip.open(ds.path, "rt") as ff:
@@ -39,5 +40,5 @@ if __name__ == "__main__":
 					continue
 				if line.startswith("#"):
 					continue
-				sys.stdout.write(f"{sample}\t{wf}\t{chromosome}\t{regions}\t{min_cov}\t")
+				sys.stdout.write(f"{sample}\t{wf}\t{chromosome}\t{regions}\t{aln_type}\t{min_cov}\t")
 				sys.stdout.write(line)
