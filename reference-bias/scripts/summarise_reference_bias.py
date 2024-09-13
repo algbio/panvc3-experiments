@@ -13,7 +13,7 @@ import sys
 
 # E.g. HG001.panvc3-bowtie2-f14-d25.mapq-recalculated.1.all.all-aln.mc10.txt
 file_name_pattern = re.compile(
-	r"^ (?: .* [/])? (?P<sample> [^.]+) [.] (?P<wf> .+) [.] (?P<chromosome> \d+) [.] (?P<regions> [^.]+) [.] ?P<aln_type>) [.] mc (?P<min_cov> \d+) [.]txt[.]gz $",
+	r"^ (?: .* [/])? (?P<sample> [^.]+) [.] (?P<wf> .+) [.] (?P<chromosome> \d+) [.] (?P<regions> [^.]+) [.] (?P<aln_type> [^.]+) [.] mc (?P<min_cov> \d+) [.]txt[.]gz $",
 	re.VERBOSE
 )
 
