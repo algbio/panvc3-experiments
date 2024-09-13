@@ -26,7 +26,7 @@ WORKFLOWS = [
 	"vg-map",
 	"vg-giraffe",
 	"reference-flow",
-	"panvc2",
+	#"panvc2",
 	"panvc3-bowtie2-f2-d2.mapq-recalculated",
 	"panvc3-bowtie2-f2-d2.max-mapq",
 	"panvc3-bowtie2-f7-d10.mapq-recalculated",
